@@ -175,7 +175,10 @@ groupRouter.post('/participants', async (req, res) => {
   try {
     // Add group_id to the query
     const result = await pool.query(
-      'INSERT INTO participants (group_id, name) VALUES ($1, $2) ON CONFLICT (group_id, name) DO NOTHING RETURNING *',
+      `INSERT INTO participants (group_id, name)
+       VALUES ($1, $2)
+       ON CONFLICT (group_id, name) DO NOTHING
+       RETURNING *`,
       [req.group_id, trimmedName]
     );
 
@@ -183,7 +186,19 @@ groupRouter.post('/participants', async (req, res) => {
         console.log(`Partecipante aggiunto al gruppo ${req.params.group_uuid}:`, result.rows[0]);
         res.status(201).json(result.rows[0]);
     } else {
-        res.status(409).json({ error: 'Un partecipante con questo nome esiste già in questo gruppo.' });
+        // Fetch the existing participant to return it
+        const existing = await pool.query(
+            'SELECT * FROM participants WHERE name = $1 AND group_id = $2',
+            [trimmedName, req.group_id]
+        );
+        if(existing.rows.length > 0) {
+             console.log(`Partecipante '${trimmedName}' already exists in group ${req.params.group_uuid}, returning existing.`);
+            res.status(200).json(existing.rows[0]); // Return existing participant data
+        } else {
+            // Should not happen if constraint exists, but handle defensively
+             console.error('Error: ON CONFLICT triggered but could not find existing participant');
+             res.status(500).json({ error: 'Error adding participant after conflict' });
+        }
     }
 
   } catch (err) {
