@@ -226,7 +226,7 @@ function renderExpenses() {
             .join(', ');
 
         li.innerHTML = `
-            ${e.description || 'Spesa'}: ${e.amount.toFixed(2)}€
+            ${e.description || 'Spesa'}: ${parseFloat(e.amount).toFixed(2)}€
             (Pagato da: ${paidByParticipant ? paidByParticipant.name : 'Sconosciuto'})
             [Diviso tra: ${involvedNames || 'Nessuno'}]
         `;
