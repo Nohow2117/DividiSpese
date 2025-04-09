@@ -445,6 +445,8 @@ function setupEventListeners() {
     }
 }
 
+// --- Constants ---
+const LOCAL_STORAGE_KEY = 'lastVisitedGroupUuid';
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -453,6 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const potentialUuid = pathSegments[0]; // Assuming UUID is the first segment
 
     if (potentialUuid && potentialUuid.length > 4) { // Basic check for a potential UUID
+        localStorage.setItem(LOCAL_STORAGE_KEY, potentialUuid); // Save the current UUID
         currentGroupUuid = potentialUuid;
         console.log(`Group UUID detected: ${currentGroupUuid}`);
         // Show app, hide create form
@@ -460,7 +463,14 @@ document.addEventListener('DOMContentLoaded', () => {
         createSplitContainer.style.display = 'none';
         loadInitialData(); // Load data for this specific group
     } else {
-        console.log('No Group UUID detected, showing create page.');
+        console.log('No valid Group UUID detected in path, showing create page.');
+        // Check local storage for a previously visited UUID
+        const savedUuid = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedUuid) {
+            console.log(`Found saved UUID (${savedUuid}) in localStorage, redirecting...`);
+            window.location.href = `/${savedUuid}`;
+            return; // Stop further execution on this page load
+        }
         // Show create form, hide app
         appContainer.style.display = 'none';
         createSplitContainer.style.display = 'block';
