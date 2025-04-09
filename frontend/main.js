@@ -1,6 +1,14 @@
-const backendUrl = '/api';
+// --- Globals ---
+let participants = [];
+let expenses = [];
+let currentGroupUuid = null; // Variable to store the group UUID from the URL
 
-// --- Elementi del DOM ---
+// --- DOM Elements ---
+const createSplitContainer = document.getElementById('create-split-container');
+const createSplitButton = document.getElementById('create-split-button');
+const createError = document.getElementById('create-error');
+const appContainer = document.getElementById('app-container');
+
 const participantForm = document.getElementById('add-participant-form');
 const participantNameInput = document.getElementById('participant-name');
 const participantsList = document.getElementById('participants-list');
@@ -18,37 +26,73 @@ const calculateBalancesBtn = document.getElementById('calculate-balances');
 const individualBalancesList = document.getElementById('individual-balances');
 const transactionsList = document.getElementById('transactions-list');
 
-// --- Stato dell'applicazione --- (i dati principali sono sul backend)
-let participants = [];
-let expenses = [];
+// --- Backend API URL ---
+// Use relative URL since frontend is served by the same backend
+const backendUrl = ''; // process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '';
 
-// --- Funzioni API ---
-
-/** Recupera dati iniziali dal backend */
-async function fetchData() {
+// --- API Functions ---
+async function createNewSplit() {
+    createSplitButton.disabled = true;
+    createError.textContent = ''; // Clear previous errors
     try {
-        const response = await fetch(`${backendUrl}/data`);
+        const response = await fetch(`${backendUrl}/api/groups`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+            // No body needed for group creation in this setup
+        });
         if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Errore HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        // Redirect to the new group's page
+        // Using a simple path structure like /uuid directly
+        window.location.href = `/${data.group_uuid}`; // Redirect to the root path + uuid
+    } catch (error) {
+        console.error('Errore nella creazione del gruppo:', error);
+        createError.textContent = `Errore: ${error.message}`;
+        createSplitButton.disabled = false; // Re-enable button on error
+    }
+}
+
+async function loadInitialData() {
+    if (!currentGroupUuid) return; // Don't load if no group context
+    try {
+        const response = await fetch(`${backendUrl}/api/groups/${currentGroupUuid}/data`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                // Group not found, maybe invalid URL? Redirect to create page.
+                console.warn('Group not found, redirecting to create page.');
+                window.location.href = '/';
+                return;
+            }
             throw new Error(`Errore HTTP: ${response.status}`);
         }
         const data = await response.json();
         participants = data.participants || [];
         expenses = data.expenses || [];
         console.log('Dati caricati:', { participants, expenses });
-        updateUI(); // Aggiorna l'interfaccia con i dati caricati
+        renderParticipants();
+        renderExpenses();
+        updateParticipantOptions();
     } catch (error) {
         console.error('Errore nel caricamento dati:', error);
-        alert('Impossibile caricare i dati dal backend. Assicurati che il server sia avviato.');
+        // Optionally show an error message to the user in the app container
+        appContainer.innerHTML = `<p class="error-message">Errore nel caricamento dei dati per questo gruppo. Prova a <a href="/">crearne uno nuovo</a>.</p>`;
+        appContainer.style.display = 'block';
+        createSplitContainer.style.display = 'none';
     }
 }
 
-/** Aggiunge un partecipante tramite API */
 async function addParticipant(name) {
+    if (!currentGroupUuid) return;
     try {
-        const response = await fetch(`${backendUrl}/participants`, {
+        const response = await fetch(`${backendUrl}/api/groups/${currentGroupUuid}/participants`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name }),
+            body: JSON.stringify({ name: name })
         });
         if (!response.ok) {
             const errorData = await response.json();
@@ -56,46 +100,63 @@ async function addParticipant(name) {
         }
         const newParticipant = await response.json();
         participants.push(newParticipant);
-        updateUI();
+        renderParticipants();
+        updateParticipantOptions();
+        participantNameInput.value = ''; // Clear input
     } catch (error) {
         console.error('Errore aggiunta partecipante:', error);
-        alert(`Errore: ${error.message}`);
+        alert(`Errore: ${error.message}`); // Simple alert for now
     }
 }
 
-/** Rimuove un partecipante tramite API */
 async function removeParticipant(id) {
-    if (!confirm('Sei sicuro di voler rimuovere questo partecipante? Verranno rimosse anche le spese associate.')) {
+    if (!currentGroupUuid) return;
+    // Confirmation dialog
+    const participant = participants.find(p => p.id === id);
+    if (!participant) return;
+
+    const confirmation = confirm(`Sei sicuro di voler rimuovere ${participant.name}? ATTENZIONE: Questo non è possibile se ${participant.name} ha pagato delle spese.`);
+    if (!confirmation) {
         return;
     }
+
     try {
-        const response = await fetch(`${backendUrl}/participants/${id}`, {
-            method: 'DELETE',
+        // Note the changed URL structure: includes participantId
+        const response = await fetch(`${backendUrl}/api/groups/${currentGroupUuid}/participants/${id}`, {
+            method: 'DELETE'
         });
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || `Errore HTTP: ${response.status}`);
         }
-        // Ricarica i dati per riflettere le modifiche (partecipante e spese)
-        await fetchData();
+        await response.json(); // Consume the response body
+
+        // Remove participant from local array
+        participants = participants.filter(p => p.id !== id);
+
+        // Re-render lists
+        renderParticipants();
+        updateParticipantOptions();
+        // We might need to re-render expenses if the deleted participant was involved
+        // but didn't pay - the backend handles removing them from the array, but frontend
+        // might need to update the display. Simplest is to reload all data, or just re-render expenses.
+        renderExpenses(); // Re-render expenses to potentially update involved lists
+        // Clear balances as they are now invalid
+        clearBalances();
+
     } catch (error) {
         console.error('Errore rimozione partecipante:', error);
         alert(`Errore: ${error.message}`);
     }
 }
 
-/** Aggiunge una spesa tramite API */
-async function addExpense(description, amount, paidById, involvedParticipantIds) {
+async function addExpense(description, amount, paidById, participantIds) {
+    if (!currentGroupUuid) return;
     try {
-        const response = await fetch(`${backendUrl}/expenses`, {
+        const response = await fetch(`${backendUrl}/api/groups/${currentGroupUuid}/expenses`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                description,
-                amount,
-                paidBy: paidById,
-                participants: involvedParticipantIds,
-            }),
+            body: JSON.stringify({ description, amount, paidBy: paidById, participants: participantIds })
         });
         if (!response.ok) {
             const errorData = await response.json();
@@ -103,82 +164,108 @@ async function addExpense(description, amount, paidById, involvedParticipantIds)
         }
         const newExpense = await response.json();
         expenses.push(newExpense);
-        updateUIExpensesList(); // Aggiorna solo la lista spese
-        clearExpenseForm();
+        renderExpenses();
+        expenseForm.reset(); // Reset form fields
+        updateParticipantCheckboxes(); // Ensure checkboxes are reset correctly
+         clearBalances(); // Clear balances as they need recalculation
     } catch (error) {
         console.error('Errore aggiunta spesa:', error);
         alert(`Errore: ${error.message}`);
     }
 }
 
-/** Rimuove una spesa tramite API */
 async function removeExpense(id) {
-    if (!confirm('Sei sicuro di voler rimuovere questa spesa?')) {
-        return;
-    }
+    if (!currentGroupUuid) return;
+    // Optional: Add confirmation dialog
+    // const confirmation = confirm("Sei sicuro di voler rimuovere questa spesa?");
+    // if (!confirmation) return;
+
     try {
-        const response = await fetch(`${backendUrl}/expenses/${id}`, {
-            method: 'DELETE',
+        const response = await fetch(`${backendUrl}/api/groups/${currentGroupUuid}/expenses/${id}`, {
+            method: 'DELETE'
         });
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || `Errore HTTP: ${response.status}`);
         }
-        // Rimuovi localmente e aggiorna UI
+        await response.json(); // Consume the response body
         expenses = expenses.filter(e => e.id !== id);
-        updateUIExpensesList();
-        // Se si rimuove una spesa, è bene ricalcolare i saldi
-        clearBalances();
+        renderExpenses();
+         clearBalances(); // Clear balances as they need recalculation
     } catch (error) {
         console.error('Errore rimozione spesa:', error);
         alert(`Errore: ${error.message}`);
     }
 }
 
-// --- Funzioni UI ---
-
-/** Aggiorna tutta l'interfaccia utente */
-function updateUI() {
-    updateParticipantsList();
-    updateExpenseFormParticipants();
-    updateUIExpensesList();
-    clearBalances(); // Pulisce i saldi quando cambiano partecipanti o spese
-}
-
-/** Aggiorna l'elenco dei partecipanti nell'HTML */
-function updateParticipantsList() {
-    participantsList.innerHTML = ''; // Pulisce la lista
+// --- Rendering Functions ---
+function renderParticipants() {
+    participantsList.innerHTML = '';
     participants.forEach(p => {
         const li = document.createElement('li');
         li.textContent = p.name;
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Rimuovi';
-        deleteBtn.classList.add('delete-btn');
-        deleteBtn.onclick = () => removeParticipant(p.id);
-        li.appendChild(deleteBtn);
+        li.dataset.id = p.id;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Rimuovi';
+        removeBtn.classList.add('remove-btn');
+        removeBtn.onclick = () => removeParticipant(p.id);
+
+        li.appendChild(removeBtn);
         participantsList.appendChild(li);
     });
 }
 
-/** Aggiorna le opzioni del select 'Pagato da' e le checkbox 'Divisa tra' nel form spese */
-function updateExpenseFormParticipants() {
-    paidBySelect.innerHTML = '<option value="" disabled selected>-- Seleziona chi ha pagato --</option>';
-    expenseParticipantsDiv.innerHTML = ''; // Pulisce le checkbox
+function renderExpenses() {
+    expensesList.innerHTML = '';
+    expenses.forEach(e => {
+        const li = document.createElement('li');
+        const paidByParticipant = participants.find(p => p.id === e.paid_by_id);
+        const involvedNames = e.participants
+            .map(pId => participants.find(p => p.id === pId)?.name || 'Sconosciuto')
+            .join(', ');
 
+        li.innerHTML = `
+            ${e.description || 'Spesa'}: ${e.amount.toFixed(2)}€
+            (Pagato da: ${paidByParticipant ? paidByParticipant.name : 'Sconosciuto'})
+            [Diviso tra: ${involvedNames || 'Nessuno'}]
+        `;
+        li.dataset.id = e.id;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Rimuovi';
+        removeBtn.classList.add('remove-btn');
+        removeBtn.onclick = () => removeExpense(e.id);
+
+        li.appendChild(removeBtn);
+        expensesList.appendChild(li);
+    });
+}
+
+// Update dropdown and checkboxes when participants change
+function updateParticipantOptions() {
+    // Update "Paid by" dropdown
+    paidBySelect.innerHTML = '<option value="" disabled selected>-- Seleziona chi ha pagato --</option>';
     participants.forEach(p => {
-        // Opzione per il select
         const option = document.createElement('option');
         option.value = p.id;
         option.textContent = p.name;
         paidBySelect.appendChild(option);
+    });
 
-        // Checkbox per la divisione
+    updateParticipantCheckboxes();
+}
+
+function updateParticipantCheckboxes() {
+     // Update "Split among" checkboxes
+    expenseParticipantsDiv.innerHTML = '';
+    participants.forEach(p => {
         const div = document.createElement('div');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `participant-${p.id}`;
         checkbox.value = p.id;
-        checkbox.checked = true; // Seleziona tutti di default
+        checkbox.checked = true; // Default to checked
         const label = document.createElement('label');
         label.htmlFor = `participant-${p.id}`;
         label.textContent = p.name;
@@ -188,213 +275,197 @@ function updateExpenseFormParticipants() {
     });
 }
 
-/** Aggiorna l'elenco delle spese nell'HTML */
-function updateUIExpensesList() {
-    expensesList.innerHTML = '';
-    expenses.forEach(expense => {
-        const li = document.createElement('li');
-        const payer = participants.find(p => p.id === expense.paidBy);
-        const involvedNames = expense.participants
-            .map(id => participants.find(p => p.id === id)?.name || 'Sconosciuto')
-            .join(', ');
+// --- Balance Calculation ---
+function calculateBalances() {
+    if (participants.length === 0) {
+        alert("Aggiungi almeno un partecipante.");
+        return;
+    }
 
-        li.innerHTML = `
-            <span>${expense.description}: ${expense.amount.toFixed(2)}€ (Pagato da: ${payer ? payer.name : 'Sconosciuto'}) - Diviso tra: ${involvedNames}</span>
-        `;
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Rimuovi';
-        deleteBtn.classList.add('delete-btn');
-        deleteBtn.onclick = () => removeExpense(expense.id);
-        li.appendChild(deleteBtn);
-        expensesList.appendChild(li);
+    const balances = new Map(); // Map<participantId, balance>
+    participants.forEach(p => balances.set(p.id, 0));
+
+    expenses.forEach(expense => {
+        const payerId = expense.paid_by_id;
+        const amount = expense.amount;
+        const involvedIds = expense.participants;
+        const share = amount / involvedIds.length;
+
+        // Add to payer's balance
+        balances.set(payerId, balances.get(payerId) + amount);
+
+        // Subtract share from each involved participant's balance
+        involvedIds.forEach(involvedId => {
+            balances.set(involvedId, balances.get(involvedId) - share);
+        });
+    });
+
+    renderIndividualBalances(balances);
+    calculateTransactions(balances);
+}
+
+function renderIndividualBalances(balances) {
+    individualBalancesList.innerHTML = '';
+    balances.forEach((balance, participantId) => {
+        const participant = participants.find(p => p.id === participantId);
+        if (participant) {
+            const li = document.createElement('li');
+            const balanceFormatted = balance.toFixed(2);
+            li.textContent = `${participant.name}: ${balanceFormatted}€ `;
+            li.style.color = balance >= 0 ? 'green' : 'red';
+            if (Math.abs(balance) < 0.01) { // Consider near-zero balances as settled
+                 li.textContent += " (Saldo pari)";
+                 li.style.color = 'grey';
+            }
+            individualBalancesList.appendChild(li);
+        }
     });
 }
 
-/** Pulisce il form delle spese */
-function clearExpenseForm() {
-    expenseForm.reset();
-    // Reseleziona tutti i partecipanti nelle checkbox dopo il reset
-    const checkboxes = expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = true);
-    paidBySelect.value = ''; // Deseleziona il pagante
+function calculateTransactions(balances) {
+    transactionsList.innerHTML = '';
+    const transactions = [];
+    const creditors = []; // { id: participantId, amount: amountOwed }
+    const debtors = [];   // { id: participantId, amount: amountToPay }
+
+    balances.forEach((balance, participantId) => {
+        if (balance > 0.01) { // Allow for small floating point inaccuracies
+            creditors.push({ id: participantId, amount: balance });
+        } else if (balance < -0.01) {
+            debtors.push({ id: participantId, amount: -balance }); // Store positive amount
+        }
+    });
+
+    // Sort for potentially more optimal transactions (largest first)
+    creditors.sort((a, b) => b.amount - a.amount);
+    debtors.sort((a, b) => b.amount - a.amount);
+
+    let i = 0; // creditor index
+    let j = 0; // debtor index
+
+    while (i < creditors.length && j < debtors.length) {
+        const creditor = creditors[i];
+        const debtor = debtors[j];
+        const amountToTransfer = Math.min(creditor.amount, debtor.amount);
+
+        if (amountToTransfer > 0.01) { // Only record meaningful transactions
+            transactions.push({
+                from: debtor.id,
+                to: creditor.id,
+                amount: amountToTransfer
+            });
+
+            creditor.amount -= amountToTransfer;
+            debtor.amount -= amountToTransfer;
+        }
+
+        if (creditor.amount < 0.01) {
+            i++;
+        }
+        if (debtor.amount < 0.01) {
+            j++;
+        }
+    }
+
+    // Render transactions
+    if (transactions.length === 0 && creditors.length === 0 && debtors.length === 0 && participants.length > 0) {
+        transactionsList.innerHTML = '<li>Tutti i conti sono a posto!</li>';
+    } else {
+        transactions.forEach(t => {
+            const fromParticipant = participants.find(p => p.id === t.from);
+            const toParticipant = participants.find(p => p.id === t.to);
+            if (fromParticipant && toParticipant) {
+                const li = document.createElement('li');
+                li.textContent = `${fromParticipant.name} deve dare ${t.amount.toFixed(2)}€ a ${toParticipant.name}`;
+                transactionsList.appendChild(li);
+            }
+        });
+    }
 }
 
-/** Pulisce le sezioni dei saldi */
 function clearBalances() {
     individualBalancesList.innerHTML = '';
     transactionsList.innerHTML = '';
 }
 
-// --- Funzioni di Calcolo Saldi ---
-
-/**
- * Calcola i saldi finali di ogni partecipante.
- * @returns {Map<number, number>} Mappa ID partecipante -> saldo (positivo = credito, negativo = debito)
- */
-function calculateIndividualBalances() {
-    const balances = new Map(); // { participantId: balance }
-    participants.forEach(p => balances.set(p.id, 0));
-
-    expenses.forEach(expense => {
-        const amount = expense.amount;
-        const paidById = expense.paidBy;
-        const involvedParticipantIds = expense.participants;
-        const numInvolved = involvedParticipantIds.length;
-
-        if (numInvolved === 0) return; // Ignora spese senza partecipanti coinvolti
-
-        const share = amount / numInvolved; // Quota per partecipante coinvolto
-
-        // Aggiungi l'intero importo pagato al saldo del pagante
-        balances.set(paidById, (balances.get(paidById) || 0) + amount);
-
-        // Sottrai la quota di ogni partecipante coinvolto dal suo saldo
-        involvedParticipantIds.forEach(participantId => {
-            balances.set(participantId, (balances.get(participantId) || 0) - share);
-        });
-    });
-
-    return balances;
-}
-
-/**
- * Calcola le transazioni minime necessarie per pareggiare i conti.
- * Algoritmo: Trova chi ha il debito maggiore e chi il credito maggiore,
- * trasferisci il minimo tra i due importi, ripeti finché tutti i saldi sono (quasi) zero.
- * @param {Map<number, number>} balances - Mappa ID partecipante -> saldo.
- * @returns {Array<{from: number, to: number, amount: number}>} Array di transazioni.
- */
-function calculateTransactions(balances) {
-    const transactions = [];
-    const balancesCopy = new Map(balances);
-
-    // Converti la mappa in un array di {id, balance} per facilitare l'ordinamento
-    let balancesArray = Array.from(balancesCopy.entries())
-                            .map(([id, balance]) => ({ id, balance }));
-
-    // Continua finché ci sono saldi significativamente diversi da zero
-    while (balancesArray.some(b => Math.abs(b.balance) > 0.001)) { // Tolleranza per errori floating point
-        // Ordina per saldo (debitori prima, creditori dopo)
-        balancesArray.sort((a, b) => a.balance - b.balance);
-
-        const debtor = balancesArray[0];         // Chi ha il debito maggiore (saldo più negativo)
-        const creditor = balancesArray[balancesArray.length - 1]; // Chi ha il credito maggiore (saldo più positivo)
-
-        // Se i saldi sono troppo piccoli, fermati
-        if (Math.abs(debtor.balance) < 0.001 || Math.abs(creditor.balance) < 0.001) {
-            break;
-        }
-
-        const amountToTransfer = Math.min(-debtor.balance, creditor.balance);
-
-        // Registra la transazione
-        transactions.push({
-            from: debtor.id,
-            to: creditor.id,
-            amount: amountToTransfer,
-        });
-
-        // Aggiorna i saldi nell'array
-        debtor.balance += amountToTransfer;
-        creditor.balance -= amountToTransfer;
-
-         // Rimuovi partecipanti con saldo zero (o quasi zero) per efficienza
-        balancesArray = balancesArray.filter(b => Math.abs(b.balance) > 0.001);
-
-        // Controllo di sicurezza per evitare loop infiniti
-        if (balancesArray.length < 2 && balancesArray.some(b => Math.abs(b.balance) > 0.001)) {
-             console.warn("Potenziale errore nel calcolo delle transazioni, i saldi non si azzerano.", balancesArray);
-             break;
-        }
-    }
-
-    return transactions;
-}
-
-/** Mostra i saldi e le transazioni calcolate nell'UI */
-function displayBalancesAndTransactions() {
-    clearBalances(); // Pulisce prima di mostrare i nuovi risultati
-
-    if (participants.length === 0) {
-        individualBalancesList.innerHTML = '<li>Aggiungi partecipanti per calcolare i saldi.</li>';
-        return;
-    }
-     if (expenses.length === 0) {
-        individualBalancesList.innerHTML = '<li>Nessuna spesa inserita.</li>';
-        return;
-    }
-
-    const individualBalances = calculateIndividualBalances();
-    const transactions = calculateTransactions(individualBalances);
-
-    // Mostra saldi individuali
-    individualBalances.forEach((balance, participantId) => {
-        const participant = participants.find(p => p.id === participantId);
-        const li = document.createElement('li');
-        const balanceStatus = balance > 0.001 ? 'Credito' : (balance < -0.001 ? 'Debito' : 'In pari');
-        li.textContent = `${participant ? participant.name : 'Sconosciuto'}: ${balance.toFixed(2)}€ (${balanceStatus})`;
-        individualBalancesList.appendChild(li);
-    });
-
-    // Mostra transazioni necessarie
-    if (transactions.length === 0 && expenses.length > 0) {
-        transactionsList.innerHTML = '<li>Tutti i conti sono in pari!</li>';
-    } else {
-        transactions.forEach(t => {
-            const fromParticipant = participants.find(p => p.id === t.from);
-            const toParticipant = participants.find(p => p.id === t.to);
-            const li = document.createElement('li');
-            li.textContent = `${fromParticipant ? fromParticipant.name : 'Sconosciuto'} deve dare ${t.amount.toFixed(2)}€ a ${toParticipant ? toParticipant.name : 'Sconosciuto'}`;
-            transactionsList.appendChild(li);
-        });
-    }
-}
-
 // --- Event Listeners ---
-
-/** Gestisce l'invio del form per aggiungere partecipanti */
-participantForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = participantNameInput.value.trim();
-    if (name) {
-        addParticipant(name);
-        participantNameInput.value = ''; // Pulisce l'input
-    }
-});
-
-/** Gestisce l'invio del form per aggiungere spese */
-expenseForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const description = expenseDescriptionInput.value.trim();
-    const amount = parseFloat(expenseAmountInput.value);
-    const paidById = parseInt(paidBySelect.value, 10);
-    const involvedCheckboxes = expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]:checked');
-    const involvedParticipantIds = Array.from(involvedCheckboxes).map(cb => parseInt(cb.value, 10));
-
-    if (!description || !amount || !paidById || involvedParticipantIds.length === 0) {
-        alert('Per favore, compila tutti i campi della spesa e seleziona almeno un partecipante coinvolto.');
-        return;
+function setupEventListeners() {
+    // Event listener for creating a new split (only if on the create page)
+    if (createSplitButton) {
+        createSplitButton.addEventListener('click', createNewSplit);
     }
 
-    addExpense(description, amount, paidById, involvedParticipantIds);
+    // Event listeners for the main app (only if on an app page)
+    if (appContainer.style.display !== 'none') {
+        participantForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = participantNameInput.value.trim();
+            if (name) {
+                addParticipant(name);
+            } else {
+                alert("Inserisci un nome valido.");
+            }
+        });
+
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const description = expenseDescriptionInput.value.trim();
+            const amount = parseFloat(expenseAmountInput.value);
+            const paidById = parseInt(paidBySelect.value, 10);
+            const involvedCheckboxes = expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]:checked');
+            const participantIds = Array.from(involvedCheckboxes).map(cb => parseInt(cb.value, 10));
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Inserisci un importo valido.");
+                return;
+            }
+            if (isNaN(paidById)) {
+                alert("Seleziona chi ha pagato.");
+                return;
+            }
+            if (participantIds.length === 0) {
+                alert("Seleziona almeno un partecipante coinvolto nella spesa.");
+                return;
+            }
+
+            addExpense(description || 'Spesa', amount, paidById, participantIds);
+        });
+
+        selectAllBtn.addEventListener('click', () => {
+            expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
+                .forEach(cb => cb.checked = true);
+        });
+
+        deselectAllBtn.addEventListener('click', () => {
+            expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
+                .forEach(cb => cb.checked = false);
+        });
+
+        calculateBalancesBtn.addEventListener('click', calculateBalances);
+    }
+}
+
+
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Extract group UUID from path (e.g., /abcdef12 -> abcdef12)
+    const pathSegments = window.location.pathname.split('/').filter(segment => segment);
+    const potentialUuid = pathSegments[0]; // Assuming UUID is the first segment
+
+    if (potentialUuid && potentialUuid.length > 4) { // Basic check for a potential UUID
+        currentGroupUuid = potentialUuid;
+        console.log(`Group UUID detected: ${currentGroupUuid}`);
+        // Show app, hide create form
+        appContainer.style.display = 'block';
+        createSplitContainer.style.display = 'none';
+        loadInitialData(); // Load data for this specific group
+    } else {
+        console.log('No Group UUID detected, showing create page.');
+        // Show create form, hide app
+        appContainer.style.display = 'none';
+        createSplitContainer.style.display = 'block';
+    }
+
+    // Setup listeners based on which container is visible
+    setupEventListeners();
 });
-
-/** Gestisce il click sul pulsante "Calcola Saldi" */
-calculateBalancesBtn.addEventListener('click', displayBalancesAndTransactions);
-
-/** Gestisce il click sul pulsante "Seleziona Tutti" per le checkbox dei partecipanti alla spesa */
-selectAllBtn.addEventListener('click', () => {
-    const checkboxes = expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = true);
-});
-
-/** Gestisce il click sul pulsante "Deseleziona Tutti" per le checkbox dei partecipanti alla spesa */
-deselectAllBtn.addEventListener('click', () => {
-    const checkboxes = expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
-});
-
-// --- Inizializzazione ---
-
-// Carica i dati iniziali quando la pagina è pronta
-document.addEventListener('DOMContentLoaded', fetchData);

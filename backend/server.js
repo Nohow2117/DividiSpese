@@ -2,6 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg'); // Import the Pool class from pg
+const crypto = require('crypto'); // For generating unique IDs
+
+// --- Helper Function to Generate Unique ID ---
+function generateUniqueId(length = 8) {
+  return crypto.randomBytes(Math.ceil(length / 2))
+    .toString('hex') // convert to hexadecimal format
+    .slice(0, length); // return required number of characters
+}
 
 // --- Database Connection ---
 // Use the DATABASE_URL environment variable provided by Render
@@ -17,25 +25,43 @@ const pool = new Pool({
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
+    // Create groups table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        group_uuid VARCHAR(12) UNIQUE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Table "groups" checked/created successfully.');
+
     // Create participants table if it doesn't exist
+    // Add group_id and update UNIQUE constraint
     await client.query(`
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL UNIQUE -- Ensure names are unique
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        UNIQUE (group_id, name) -- Name must be unique within a group
       );
     `);
     console.log('Table "participants" checked/created successfully.');
 
     // Create expenses table if it doesn't exist
+    // Add group_id
     await client.query(`
       CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
         description TEXT,
         amount NUMERIC(10, 2) NOT NULL,
-        paid_by_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE, -- Cascade delete if participant is removed
+        paid_by_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE RESTRICT, -- Prevent deleting participant if they paid expenses
         participants INTEGER[] NOT NULL -- Array of participant IDs involved
       );
     `);
+    // Change ON DELETE CASCADE to ON DELETE RESTRICT for paid_by_id
+    // to prevent accidental data loss if a participant is deleted.
+    // We'll handle participant deletion more carefully in the API.
     console.log('Table "expenses" checked/created successfully.');
 
   } catch (err) {
@@ -52,35 +78,94 @@ initializeDatabase();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve frontend files conditionally (see catch-all route)
+// app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(cors());
 app.use(express.json());
 
-// --- API Endpoints (Using Database) ---
+// --- Middleware to get group_id from group_uuid ---
+// This avoids repeating the lookup in every route
+async function getGroupId(req, res, next) {
+    const { group_uuid } = req.params;
+    if (!group_uuid) {
+        return res.status(400).json({ error: 'Group UUID mancante nella richiesta.' });
+    }
+    try {
+        const result = await pool.query('SELECT id FROM groups WHERE group_uuid = $1', [group_uuid]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Gruppo non trovato.' });
+        }
+        req.group_id = result.rows[0].id; // Attach group_id to request object
+        next(); // Proceed to the next handler
+    } catch (err) {
+        console.error('Error fetching group ID:', err);
+        res.status(500).json({ error: 'Errore nel recupero del gruppo.' });
+    }
+}
+
+// --- API Endpoints (Scoped by Group) ---
 
 /**
- * Endpoint per recuperare tutti i partecipanti e le spese dal DB.
- * GET /api/data
- * @returns {object} JSON con partecipanti e spese.
+ * Endpoint per creare un nuovo gruppo/sessione.
+ * POST /api/groups
+ * @returns {object} { group_uuid: string }
  */
-app.get('/api/data', async (req, res) => {
+app.post('/api/groups', async (req, res) => {
+    let group_uuid;
+    let attempts = 0;
+    const maxAttempts = 5; // Prevent infinite loop in case of unlikely collision storm
+
+    try {
+        while (attempts < maxAttempts) {
+            group_uuid = generateUniqueId(8); // Generate an 8-char ID
+            const insertResult = await pool.query(
+                'INSERT INTO groups (group_uuid) VALUES ($1) ON CONFLICT (group_uuid) DO NOTHING RETURNING group_uuid',
+                [group_uuid]
+            );
+            if (insertResult.rows.length > 0) {
+                console.log('Nuovo gruppo creato:', group_uuid);
+                return res.status(201).json({ group_uuid: insertResult.rows[0].group_uuid });
+            }
+            attempts++;
+        }
+        // If loop finished without success
+        console.error('Failed to generate a unique group UUID after multiple attempts.');
+        res.status(500).json({ error: 'Impossibile generare un ID gruppo univoco.' });
+
+    } catch (err) {
+        console.error('Error creating group:', err);
+        res.status(500).json({ error: 'Errore nella creazione del gruppo.' });
+    }
+});
+
+// Use group_uuid in the path for all data-related endpoints
+const groupRouter = express.Router({ mergeParams: true }); // Allows access to parent router params (group_uuid)
+app.use('/api/groups/:group_uuid', getGroupId, groupRouter); // Apply middleware to all routes under this path
+
+/**
+ * Endpoint per recuperare tutti i partecipanti e le spese di un gruppo specifico.
+ * GET /api/groups/:group_uuid/data
+ * @returns {object} JSON con partecipanti e spese del gruppo.
+ */
+groupRouter.get('/data', async (req, res) => {
   try {
-    const participantsResult = await pool.query('SELECT * FROM participants ORDER BY name');
-    const expensesResult = await pool.query('SELECT * FROM expenses ORDER BY id DESC'); // Show newest expenses first
+    // req.group_id is available from the middleware
+    const participantsResult = await pool.query('SELECT * FROM participants WHERE group_id = $1 ORDER BY name', [req.group_id]);
+    const expensesResult = await pool.query('SELECT * FROM expenses WHERE group_id = $1 ORDER BY id DESC', [req.group_id]);
     res.json({ participants: participantsResult.rows, expenses: expensesResult.rows });
   } catch (err) {
-    console.error('Error fetching data:', err);
-    res.status(500).json({ error: 'Errore nel recupero dati dal database.' });
+    console.error('Error fetching group data:', err);
+    res.status(500).json({ error: 'Errore nel recupero dati del gruppo.' });
   }
 });
 
 /**
- * Endpoint per aggiungere un nuovo partecipante al DB.
- * POST /api/participants
+ * Endpoint per aggiungere un nuovo partecipante a un gruppo specifico.
+ * POST /api/groups/:group_uuid/participants
  * Body: { name: string }
  * @returns {object} Il partecipante aggiunto.
  */
-app.post('/api/participants', async (req, res) => {
+groupRouter.post('/participants', async (req, res) => {
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim() === '') {
     return res.status(400).json({ error: 'Il nome del partecipante è obbligatorio.' });
@@ -88,166 +173,189 @@ app.post('/api/participants', async (req, res) => {
   const trimmedName = name.trim();
 
   try {
-    // Use INSERT ... ON CONFLICT DO NOTHING to handle unique constraint gracefully
+    // Add group_id to the query
     const result = await pool.query(
-      'INSERT INTO participants (name) VALUES ($1) ON CONFLICT (name) DO NOTHING RETURNING *',
-      [trimmedName]
+      'INSERT INTO participants (group_id, name) VALUES ($1, $2) ON CONFLICT (group_id, name) DO NOTHING RETURNING *',
+      [req.group_id, trimmedName]
     );
 
     if (result.rows.length > 0) {
-        console.log('Partecipante aggiunto:', result.rows[0]);
+        console.log(`Partecipante aggiunto al gruppo ${req.params.group_uuid}:`, result.rows[0]);
         res.status(201).json(result.rows[0]);
     } else {
-        // If no rows returned, it means the name already existed
-        res.status(409).json({ error: 'Un partecipante con questo nome esiste già.' });
+        res.status(409).json({ error: 'Un partecipante con questo nome esiste già in questo gruppo.' });
     }
 
   } catch (err) {
-    console.error('Error adding participant:', err);
-    res.status(500).json({ error: 'Errore nell\'aggiunta del partecipante al database.' });
+    console.error('Error adding participant to group:', err);
+    res.status(500).json({ error: 'Errore nell\'aggiunta del partecipante al gruppo.' });
   }
 });
 
 /**
- * Endpoint per rimuovere un partecipante dal DB (e le spese associate tramite CASCADE).
- * DELETE /api/participants/:id
+ * Endpoint per rimuovere un partecipante da un gruppo.
+ * DELETE /api/groups/:group_uuid/participants/:participantId
  * @returns {object} Messaggio di successo o errore.
  */
-app.delete('/api/participants/:id', async (req, res) => {
-    const participantId = parseInt(req.params.id, 10);
+groupRouter.delete('/participants/:participantId', async (req, res) => {
+    const participantId = parseInt(req.params.participantId, 10);
     if (isNaN(participantId)) {
         return res.status(400).json({ error: 'ID partecipante non valido.' });
     }
 
-    // NOTE: We also need to remove the participant ID from the `participants` array
-    // within any existing expenses where they might be involved but didn't pay.
     const client = await pool.connect();
     try {
         await client.query('BEGIN'); // Start transaction
 
-        // Remove participant ID from involved arrays in expenses table
+        // 1. Check if participant exists IN THIS GROUP and if they paid any expenses
+        const participantCheck = await client.query(
+            'SELECT p.id, EXISTS(SELECT 1 FROM expenses e WHERE e.paid_by_id = p.id AND e.group_id = $1) as has_paid_expenses ' +
+            'FROM participants p WHERE p.id = $2 AND p.group_id = $1',
+            [req.group_id, participantId]
+        );
+
+        if (participantCheck.rowCount === 0) {
+             await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Partecipante non trovato in questo gruppo.' });
+        }
+        if (participantCheck.rows[0].has_paid_expenses) {
+             await client.query('ROLLBACK');
+             return res.status(400).json({ error: 'Impossibile rimuovere il partecipante perchè ha pagato delle spese. Rimuovere prima le spese associate.' });
+        }
+
+        // 2. Remove participant ID from involved arrays in expenses table for this group
         await client.query(
             `UPDATE expenses
              SET participants = array_remove(participants, $1)
-             WHERE $1 = ANY(participants);`,
-            [participantId]
+             WHERE group_id = $2 AND $1 = ANY(participants);`,
+            [participantId, req.group_id]
         );
 
-        // Now delete the participant (ON DELETE CASCADE handles expenses paid by them)
-        const result = await client.query('DELETE FROM participants WHERE id = $1 RETURNING id', [participantId]);
+        // 3. Now delete the participant (should only succeed if no expenses were paid due to RESTRICT constraint)
+        const deleteResult = await client.query('DELETE FROM participants WHERE id = $1 AND group_id = $2', [participantId, req.group_id]);
 
-        if (result.rowCount > 0) {
+        if (deleteResult.rowCount > 0) {
              await client.query('COMMIT'); // Commit transaction
-            console.log('Partecipante rimosso:', participantId);
+            console.log(`Partecipante rimosso ${participantId} dal gruppo ${req.params.group_uuid}`);
             res.json({ message: 'Partecipante e riferimenti spese rimossi con successo.' });
         } else {
-             await client.query('ROLLBACK'); // Rollback if participant not found
-            res.status(404).json({ error: 'Partecipante non trovato.' });
+             // Should not happen if check above passed, but good practice
+             await client.query('ROLLBACK');
+            res.status(404).json({ error: 'Partecipante non trovato (durante eliminazione).' });
         }
     } catch (err) {
         await client.query('ROLLBACK'); // Rollback on error
-        console.error('Error removing participant:', err);
-        res.status(500).json({ error: 'Errore nella rimozione del partecipante dal database.' });
+        console.error('Error removing participant from group:', err);
+        // Check for foreign key violation (paid expenses)
+        if (err.code === '23503') { // PostgreSQL foreign key violation code
+             res.status(400).json({ error: 'Impossibile rimuovere: il partecipante ha pagato una o più spese.' });
+        } else {
+             res.status(500).json({ error: 'Errore nella rimozione del partecipante.' });
+        }
     } finally {
         client.release();
     }
 });
 
 /**
- * Endpoint per aggiungere una nuova spesa al DB.
- * POST /api/expenses
+ * Endpoint per aggiungere una nuova spesa a un gruppo specifico.
+ * POST /api/groups/:group_uuid/expenses
  * Body: { paidBy: number, amount: number, description: string, participants: number[] }
  * @returns {object} La spesa aggiunta.
  */
-app.post('/api/expenses', async (req, res) => {
+groupRouter.post('/expenses', async (req, res) => {
   const { paidBy, amount, description, participants: involvedParticipantIds } = req.body;
 
-  // --- Basic Validation ---
+  // Basic Validation
    if (!paidBy || typeof paidBy !== 'number') {
     return res.status(400).json({ error: 'ID pagante mancante o non valido.' });
   }
   if (!amount || typeof amount !== 'number' || amount <= 0) {
     return res.status(400).json({ error: 'Importo non valido.' });
   }
-  const trimmedDescription = description?.trim() || 'Spesa'; // Default description
+  const trimmedDescription = description?.trim() || 'Spesa';
   if (!Array.isArray(involvedParticipantIds) || involvedParticipantIds.length === 0 || !involvedParticipantIds.every(id => typeof id === 'number')) {
       return res.status(400).json({ error: 'Lista partecipanti coinvolti non valida.' });
   }
-  // --- End Basic Validation ---
 
   const client = await pool.connect();
   try {
-      await client.query('BEGIN'); // Start transaction
+      await client.query('BEGIN');
 
-      // Validate that the payer exists
-      const payerExists = await client.query('SELECT id FROM participants WHERE id = $1', [paidBy]);
+      // Validate that the payer exists IN THIS GROUP
+      const payerExists = await client.query('SELECT id FROM participants WHERE id = $1 AND group_id = $2', [paidBy, req.group_id]);
       if (payerExists.rowCount === 0) {
           await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Il partecipante pagante specificato non esiste.' });
+          return res.status(400).json({ error: 'Il partecipante pagante specificato non esiste in questo gruppo.' });
       }
 
-      // Validate that all involved participants exist
-      // Use ANY operator for efficiency
+      // Validate that all involved participants exist IN THIS GROUP
       const involvedCheck = await client.query(
-          'SELECT COUNT(id) AS count FROM participants WHERE id = ANY($1::int[])',
-          [involvedParticipantIds]
+          'SELECT COUNT(id) AS count FROM participants WHERE group_id = $1 AND id = ANY($2::int[])',
+          [req.group_id, involvedParticipantIds]
       );
       if (parseInt(involvedCheck.rows[0].count, 10) !== involvedParticipantIds.length) {
           await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Uno o più partecipanti coinvolti specificati non esistono.' });
+          return res.status(400).json({ error: 'Uno o più partecipanti coinvolti specificati non esistono in questo gruppo.' });
       }
 
-      // Insert the expense
+      // Insert the expense with group_id
       const result = await client.query(
-          `INSERT INTO expenses (description, amount, paid_by_id, participants)
-           VALUES ($1, $2, $3, $4) RETURNING *`,
-          [trimmedDescription, amount, paidBy, involvedParticipantIds]
+          `INSERT INTO expenses (group_id, description, amount, paid_by_id, participants)
+           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+          [req.group_id, trimmedDescription, amount, paidBy, involvedParticipantIds]
       );
 
-      await client.query('COMMIT'); // Commit transaction
-      console.log('Spesa aggiunta:', result.rows[0]);
+      await client.query('COMMIT');
+      console.log(`Spesa aggiunta al gruppo ${req.params.group_uuid}:`, result.rows[0]);
       res.status(201).json(result.rows[0]);
 
   } catch (err) {
-      await client.query('ROLLBACK'); // Rollback on any error
-      console.error('Error adding expense:', err);
-      res.status(500).json({ error: 'Errore nell\'aggiunta della spesa al database.' });
+      await client.query('ROLLBACK');
+      console.error('Error adding expense to group:', err);
+      res.status(500).json({ error: 'Errore nell\'aggiunta della spesa al gruppo.' });
   } finally {
       client.release();
   }
 });
 
 /**
- * Endpoint per rimuovere una spesa dal DB.
- * DELETE /api/expenses/:id
+ * Endpoint per rimuovere una spesa da un gruppo specifico.
+ * DELETE /api/groups/:group_uuid/expenses/:expenseId
  * @returns {object} Messaggio di successo o errore.
  */
-app.delete('/api/expenses/:id', async (req, res) => {
-    const expenseId = parseInt(req.params.id, 10);
+groupRouter.delete('/expenses/:expenseId', async (req, res) => {
+    const expenseId = parseInt(req.params.expenseId, 10);
      if (isNaN(expenseId)) {
         return res.status(400).json({ error: 'ID spesa non valido.' });
     }
 
     try {
-        const result = await pool.query('DELETE FROM expenses WHERE id = $1 RETURNING id', [expenseId]);
+        // Ensure deletion is scoped to the group
+        const result = await pool.query('DELETE FROM expenses WHERE id = $1 AND group_id = $2 RETURNING id', [expenseId, req.group_id]);
         if (result.rowCount > 0) {
-            console.log('Spesa rimossa:', expenseId);
+            console.log(`Spesa rimossa ${expenseId} dal gruppo ${req.params.group_uuid}`);
             res.json({ message: 'Spesa rimossa con successo.' });
         } else {
-            res.status(404).json({ error: 'Spesa non trovata.' });
+            res.status(404).json({ error: 'Spesa non trovata in questo gruppo.' });
         }
     } catch (err) {
-        console.error('Error removing expense:', err);
-        res.status(500).json({ error: 'Errore nella rimozione della spesa dal database.' });
+        console.error('Error removing expense from group:', err);
+        res.status(500).json({ error: 'Errore nella rimozione della spesa.' });
     }
 });
 
-// Catch-all to serve index.html
+// --- Frontend Serving ---
+// Serve static files from the frontend folder
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Catch-all to serve index.html for any other GET request.
+// This allows direct navigation to /app/some-uuid and lets the frontend router handle it.
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Avvio del server
 app.listen(port, () => {
-  console.log(`Backend server listening on port ${port}`); // Updated log message
+  console.log(`Backend server listening on port ${port}`);
 });
