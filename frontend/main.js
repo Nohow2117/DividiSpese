@@ -287,16 +287,25 @@ function calculateBalances() {
 
     expenses.forEach(expense => {
         const payerId = expense.paid_by_id;
-        const amount = expense.amount;
+        const amount = parseFloat(expense.amount); // Convert to number
         const involvedIds = expense.participants;
+
+        // Check if amount is a valid number and involvedIds is not empty
+        if (isNaN(amount) || involvedIds.length === 0) {
+            console.error('Invalid expense data encountered:', expense);
+            return; // Skip this expense
+        }
+
         const share = amount / involvedIds.length;
 
-        // Add to payer's balance
-        balances.set(payerId, balances.get(payerId) + amount);
+        // Add to payer's balance (ensure current balance is also a number)
+        const currentPayerBalance = balances.get(payerId) || 0;
+        balances.set(payerId, currentPayerBalance + amount);
 
         // Subtract share from each involved participant's balance
         involvedIds.forEach(involvedId => {
-            balances.set(involvedId, balances.get(involvedId) - share);
+            const currentInvolvedBalance = balances.get(involvedId) || 0;
+            balances.set(involvedId, currentInvolvedBalance - share);
         });
     });
 
