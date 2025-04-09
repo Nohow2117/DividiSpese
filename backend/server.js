@@ -315,7 +315,7 @@ groupRouter.post('/expenses', async (req, res) => {
       }
 
       // Insert the expense with group_id
-      const result = await client.query(
+      const result = await pool.query(
           `INSERT INTO expenses (group_id, description, amount, paid_by_id, participants)
            VALUES ($1, $2, $3, $4, $5) RETURNING *`,
           [req.group_id, trimmedDescription, amount, paidBy, involvedParticipantIds]
@@ -358,6 +358,86 @@ groupRouter.delete('/expenses/:expenseId', async (req, res) => {
         console.error('Error removing expense from group:', err);
         res.status(500).json({ error: 'Errore nella rimozione della spesa.' });
     }
+});
+
+/**
+ * Endpoint per aggiungere un nuovo partecipante a un gruppo specifico.
+ * POST /api/groups/:groupUuid/participants
+ * Body: { name: string }
+ * @returns {object} Il partecipante aggiunto.
+ */
+app.post('/api/groups/:groupUuid/participants', async (req, res) => {
+    const { groupUuid } = req.params;
+    const { name } = req.body;
+
+    // --- Add logging here ---
+    console.log(`Attempting to add participant '${name}' to group UUID: ${groupUuid}`);
+    console.log(`Type of groupUuid from req.params: ${typeof groupUuid}`);
+    // --- End logging ---
+
+    if (!name) {
+        return res.status(400).json({ error: 'Participant name is required' });
+    }
+    // Trim the name
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+        return res.status(400).json({ error: 'Participant name cannot be empty' });
+    }
+
+
+    // const client = await pool.connect(); NO! Use pool directly for single queries
+    try {
+        // Check if group exists (optional, but good practice - already done by FK constraint now)
+        /* const groupCheck = await pool.query('SELECT id FROM groups WHERE group_uuid = $1', [groupUuid]);
+        if (groupCheck.rows.length === 0) {
+            // client.release(); NO!
+            return res.status(404).json({ error: 'Group not found' });
+        } */
+
+        // Log values going into the query
+        console.log(`Executing INSERT with name: '${trimmedName}', group_id: '${groupUuid}'`);
+
+        // Insert participant, handling potential duplicates within the same group
+        const result = await pool.query(
+            `INSERT INTO participants (name, group_id)
+             VALUES ($1, $2)
+             ON CONFLICT (name, group_id) DO NOTHING -- Specify the columns for conflict
+             RETURNING id, name, group_id`, // Return the inserted (or existing ignored) row data
+            [trimmedName, groupUuid] // Use trimmedName here
+        );
+
+        if (result.rows.length > 0) {
+            console.log(`Participant '${trimmedName}' added to group ${groupUuid}:`, result.rows[0]);
+            res.status(201).json(result.rows[0]); // Return the added participant
+        } else {
+            // This happens if ON CONFLICT DO NOTHING was triggered
+            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Fetching existing.`);
+            // Fetch the existing participant to return it
+            const existing = await pool.query(
+                'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
+                [trimmedName, groupUuid]
+            );
+            if(existing.rows.length > 0) {
+                 console.log(`Returning existing participant:`, existing.rows[0]);
+                res.status(200).json(existing.rows[0]); // Return existing participant data
+            } else {
+                // Should not happen if constraint exists, but handle defensively
+                 console.error(`Error: ON CONFLICT triggered for name='${trimmedName}', group='${groupUuid}' but could not find existing participant`);
+                 res.status(500).json({ error: 'Error adding participant after conflict' });
+            }
+        }
+
+    } catch (err) {
+        console.error('Error adding participant to group:', err);
+        // More specific error for FK violation?
+        if (err.code === '23503') { // Foreign key violation
+             res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
+        } else {
+            res.status(500).json({ error: 'Database error adding participant' });
+        }
+    } /* finally {
+        // client.release(); NO! Pool manages connections
+    } */
 });
 
 // --- Frontend Serving ---
