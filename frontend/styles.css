@@ -1,0 +1,148 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+h2 {
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-top: 0;
+}
+
+section {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+form div {
+    margin-bottom: 10px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #444;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: calc(100% - 22px); /* Adjust for padding and border */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    background-color: #5cb85c;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px; /* Add some spacing between buttons */
+}
+
+button:hover {
+    background-color: #4cae4c;
+}
+
+button[type="button"] {
+    background-color: #f0ad4e;
+}
+
+button[type="button"]:hover {
+    background-color: #ec971f;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    background-color: #fff;
+    margin-bottom: 8px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    display: flex;       /* Use flexbox for alignment */
+    justify-content: space-between; /* Space out content */
+    align-items: center;    /* Vertically center items */
+}
+
+li button.delete-btn {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+li button.delete-btn:hover {
+    background-color: #c9302c;
+}
+
+#expense-participants div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#expense-participants input[type="checkbox"] {
+    margin-right: 8px;
+    width: auto; /* Override default width */
+}
+
+#balances-summary,
+#transactions-summary {
+    margin-top: 20px;
+    background-color: #e9f5ff;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #bce8f1;
+}
+
+#balances-summary h3,
+#transactions-summary h3 {
+    margin-top: 0;
+    color: #31708f;
+}
+
+#individual-balances li,
+#transactions-list li {
+    background-color: #fff;
+    border-color: #d6e9c6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr; /* Stack sections vertically */
+    }
+}

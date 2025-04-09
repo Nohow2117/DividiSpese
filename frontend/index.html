@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dividi Spese - Il Calcolatore Intelligente</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <h1>Dividi Spese</h1>
+    <p>Aggiungi partecipanti, inserisci le spese e scopri chi deve dare soldi a chi!</p>
+
+    <div class="container">
+        <!-- Sezione Partecipanti -->
+        <section id="participants-section">
+            <h2>Partecipanti</h2>
+            <form id="add-participant-form">
+                <input type="text" id="participant-name" placeholder="Nome partecipante" required>
+                <button type="submit">Aggiungi Partecipante</button>
+            </form>
+            <ul id="participants-list"></ul>
+        </section>
+
+        <!-- Sezione Spese -->
+        <section id="expenses-section">
+            <h2>Spese</h2>
+            <form id="add-expense-form">
+                <div>
+                    <label for="expense-description">Descrizione:</label>
+                    <input type="text" id="expense-description" required>
+                </div>
+                <div>
+                    <label for="expense-amount">Importo (€):</label>
+                    <input type="number" id="expense-amount" step="0.01" min="0.01" required>
+                </div>
+                <div>
+                    <label for="paid-by">Pagato da:</label>
+                    <select id="paid-by" required>
+                        <option value="" disabled selected>-- Seleziona chi ha pagato --</option>
+                        <!-- Opzioni popolate dinamicamente -->
+                    </select>
+                </div>
+                <div>
+                    <label>Divisa tra:</label>
+                    <div id="expense-participants">
+                        <!-- Checkbox popolate dinamicamente -->
+                    </div>
+                    <button type="button" id="select-all-participants">Seleziona Tutti</button>
+                    <button type="button" id="deselect-all-participants">Deseleziona Tutti</button>
+                </div>
+                <button type="submit">Aggiungi Spesa</button>
+            </form>
+            <ul id="expenses-list">
+                 <!-- Elenco spese popolato dinamicamente -->
+            </ul>
+        </section>
+
+        <!-- Sezione Riepilogo Saldi -->
+        <section id="summary-section">
+            <h2>Riepilogo Saldi</h2>
+            <button id="calculate-balances">Calcola Saldi</button>
+            <div id="balances-summary">
+                <h3>Saldi Individuali:</h3>
+                <ul id="individual-balances"></ul>
+            </div>
+            <div id="transactions-summary">
+                <h3>Transazioni Necessarie:</h3>
+                <ul id="transactions-list"></ul>
+            </div>
+        </section>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
