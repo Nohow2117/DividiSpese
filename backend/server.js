@@ -1,8 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use(cors()); // Abilita CORS per permettere richieste dal frontend
 app.use(express.json()); // Permette al server di leggere JSON dal body delle richieste
@@ -135,6 +138,11 @@ app.delete('/api/expenses/:id', (req, res) => {
     }
 });
 
+// Catch-all to serve index.html for any route not handled above
+// This helps if the user directly navigates or refreshes a non-root frontend path (though less critical here)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 // Avvio del server
 app.listen(port, () => {

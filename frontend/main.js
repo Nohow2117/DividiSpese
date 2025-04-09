@@ -1,4 +1,4 @@
-const backendUrl = 'http://localhost:3000/api';
+const backendUrl = '/api';
 
 // --- Elementi del DOM ---
 const participantForm = document.getElementById('add-participant-form');
