@@ -1,148 +1,409 @@
+/* General Styles */
 body {
     font-family: sans-serif;
-    line-height: 1.6;
-    margin: 20px;
-    background-color: #f4f4f4;
-}
-
-.container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-h1 {
-    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9fa;
     color: #333;
 }
 
-h2 {
-    color: #555;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+/* Welcome Screen Specific Styles */
+.welcome-header {
+    background-color: #4CAF50; /* Green theme color */
+    color: white;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.welcome-header h1 {
+    margin-bottom: 10px;
+    font-size: 2.8em;
+}
+
+.welcome-header h2 {
+    margin-bottom: 15px;
+    font-weight: normal;
+    font-size: 1.5em;
+}
+
+.welcome-header .subtitle {
+    font-size: 1.1em;
+    color: #e0e0e0;
+}
+
+.welcome-main {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    padding: 40px 20px;
+    gap: 40px; /* Space between columns */
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+.left-column {
+    flex: 3; /* Takes up 60% */
+    min-width: 300px; /* Ensure minimum width */
+}
+
+.right-column {
+    flex: 2; /* Takes up 40% */
+    min-width: 280px; /* Ensure minimum width */
+}
+
+.illustration-placeholder {
+    margin-bottom: 30px;
+    /* Add styles for the actual image later */
+}
+
+.benefits {
+    display: flex;
+    flex-direction: column; /* Stack benefits vertically */
+    gap: 15px; /* Space between benefit items */
+}
+
+.benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between icon and text */
+    font-size: 1.1em;
+}
+
+.benefit-item i {
+    color: #4CAF50; /* Green icon color */
+    font-size: 1.4em;
+    width: 25px; /* Fixed width for alignment */
+    text-align: center;
+}
+
+.start-card {
+    background-color: #f0f0f0; /* Slightly contrasting background */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.start-card h3 {
     margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.4em;
 }
 
-section {
-    background-color: #f9f9f9;
+.start-card input[type="text"] {
+    width: calc(100% - 22px); /* Account for padding/border */
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.cta-button {
+    display: block;
+    width: 100%;
     padding: 15px;
+    background-color: #28a745; /* Success green */
+    color: white;
+    border: none;
     border-radius: 5px;
-    border: 1px solid #ddd;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-form div {
+.cta-button:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+.reassurance {
+    text-align: center;
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 15px;
+}
+
+.secondary-cta {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.secondary-cta a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.secondary-cta a:hover {
+    text-decoration: underline;
+}
+
+.social-proof {
+    background-color: #e9ecef;
+    padding: 30px 20px;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.counter {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.counter span {
+    font-weight: bold;
+}
+
+.testimonials {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.testimonial {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    max-width: 300px;
+    text-align: left;
+    display: flex; /* Use flex for avatar and text */
+    align-items: flex-start; /* Align items at the top */
+    gap: 15px;
+}
+
+.avatar-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #ccc; /* Placeholder color */
+    border: 1px solid #bbb;
+    flex-shrink: 0; /* Prevent avatar from shrinking */
+}
+
+.testimonial blockquote {
+    margin: 0;
+    font-style: italic;
+    color: #444;
+    flex-grow: 1; /* Allow text to take remaining space */
+}
+
+.testimonial footer {
+    margin-top: 10px;
+    font-style: normal;
+    font-weight: bold;
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* App Container Styles (Keep existing ones and potentially adjust) */
+/* ... (Existing styles for #app-container sections) ... */
+
+#app-container h1 {
+    color: #333;
+    text-align: center;
     margin-bottom: 10px;
 }
 
-label {
+#app-container > p { /* Targeting share link and back button paragraphs */
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#app-container code {
+    background-color: #eee;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+#app-container .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Adjust gap between sections */
+}
+
+#app-container section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    flex: 1; /* Allow sections to grow */
+    min-width: 280px; /* Minimum width for responsiveness */
+}
+
+/* Adjust section layout if needed, e.g., participants/expenses side-by-side */
+@media (min-width: 768px) {
+    #participants-section, #expenses-section {
+        flex-basis: calc(50% - 10px); /* Two columns layout */
+    }
+    #balance-section {
+        flex-basis: 100%; /* Full width for balance */
+    }
+}
+
+#app-container h2 {
+    margin-top: 0;
+    color: #4CAF50;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+#app-container form div {
+    margin-bottom: 15px;
+}
+
+#app-container label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #444;
 }
 
-input[type="text"],
-input[type="number"],
-select {
-    width: calc(100% - 22px); /* Adjust for padding and border */
+#app-container input[type="text"],
+#app-container input[type="number"],
+#app-container select {
+    width: calc(100% - 22px); /* Full width minus padding/border */
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
 
-button {
-    background-color: #5cb85c;
+#app-container button {
+    background-color: #4CAF50;
     color: white;
     padding: 10px 15px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    margin-right: 5px; /* Add some spacing between buttons */
+    transition: background-color 0.2s ease;
 }
 
-button:hover {
-    background-color: #4cae4c;
+#app-container button:hover {
+    background-color: #45a049;
 }
 
-button[type="button"] {
-    background-color: #f0ad4e;
+#app-container button.remove-btn {
+    background-color: #f44336; /* Red for remove */
+    margin-left: 10px;
+    padding: 3px 8px;
+    font-size: 0.8em;
 }
 
-button[type="button"]:hover {
-    background-color: #ec971f;
+#app-container button.remove-btn:hover {
+    background-color: #d32f2f;
 }
 
-ul {
+
+#app-container ul {
     list-style: none;
     padding: 0;
+    margin-top: 15px;
 }
 
-li {
-    background-color: #fff;
-    margin-bottom: 8px;
-    padding: 10px;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    display: flex;       /* Use flexbox for alignment */
-    justify-content: space-between; /* Space out content */
-    align-items: center;    /* Vertically center items */
-}
-
-li button.delete-btn {
-    background-color: #d9534f;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-
-li button.delete-btn:hover {
-    background-color: #c9302c;
-}
-
-#expense-participants div {
+#app-container ul li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
     display: flex;
+    justify-content: space-between;
     align-items: center;
+}
+
+#app-container ul li:last-child {
+    border-bottom: none;
+}
+
+.checkbox-group {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.checkbox-group div {
+    display: block; /* Ensure each checkbox is on a new line */
     margin-bottom: 5px;
 }
 
-#expense-participants input[type="checkbox"] {
-    margin-right: 8px;
-    width: auto; /* Override default width */
+.checkbox-group label {
+    display: inline-block; /* Keep label next to checkbox */
+    margin-left: 5px;
+    font-weight: normal;
 }
 
-#balances-summary,
-#transactions-summary {
-    margin-top: 20px;
-    background-color: #e9f5ff;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #bce8f1;
-}
-
-#balances-summary h3,
-#transactions-summary h3 {
-    margin-top: 0;
-    color: #31708f;
-}
-
-#individual-balances li,
+/* Balance/Transaction list styles */
+#individual-balances-list li,
 #transactions-list li {
-    background-color: #fff;
-    border-color: #d6e9c6;
+    padding: 5px 0;
+    font-size: 0.95em;
+}
+
+.error-message {
+    color: #dc3545; /* Bootstrap danger color */
+    font-size: 0.9em;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto; /* 10% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 600px; /* Maximum width */
+    border-radius: 8px;
+    position: relative;
+}
+
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .container {
-        grid-template-columns: 1fr; /* Stack sections vertically */
+    .welcome-main {
+        flex-direction: column;
+    }
+    .testimonials {
+        flex-direction: column;
+        align-items: center;
     }
 }
