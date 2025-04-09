@@ -277,6 +277,7 @@ function updateParticipantCheckboxes() {
 
 // --- Balance Calculation ---
 function calculateBalances() {
+    console.log(`Calculating balances with ${expenses.length} expenses:`, expenses);
     if (participants.length === 0) {
         alert("Aggiungi almeno un partecipante.");
         return;
