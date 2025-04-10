@@ -275,7 +275,11 @@ async function removeExpense(id) {
 }
 
 async function handleDeleteGroupClick() {
-    if (!currentGroupUuid) return;
+    console.log("DEBUG: handleDeleteGroupClick called. currentGroupUuid:", currentGroupUuid); // Added log
+    if (!currentGroupUuid) {
+        console.log("DEBUG: No currentGroupUuid, exiting delete handler."); // Added log
+        return;
+    }
 
     const confirmation = confirm(`Sei sicuro di voler eliminare questo gruppo (${currentGroupName || 'Senza Nome'}) e tutti i suoi dati? L'azione è irreversibile.`);
 
@@ -570,6 +574,7 @@ function setupEventListeners() {
     // Add listener for the new delete button
     const deleteButton = document.getElementById('delete-group-button');
     if (deleteButton) {
+        console.log("DEBUG: Attaching listener to delete button:", deleteButton); // Added log
         deleteButton.addEventListener('click', handleDeleteGroupClick);
     } else {
         console.warn('Delete group button not found for event listener setup.');
