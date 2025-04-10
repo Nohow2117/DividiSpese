@@ -22,7 +22,6 @@ const expenseDescriptionInput = document.getElementById('expense-description');
 const expenseAmountInput = document.getElementById('expense-amount');
 const paidBySelect = document.getElementById('paid-by');
 const expenseParticipantsDiv = document.getElementById('expense-participants');
-const expensesList = document.getElementById('expenses-list');
 const selectAllBtn = document.getElementById('select-all-participants');
 const deselectAllBtn = document.getElementById('deselect-all-participants');
 
@@ -323,6 +322,11 @@ function renderParticipants() {
 }
 
 function renderExpenses() {
+    const expensesList = document.getElementById('expenses-list'); // Get element here
+    if (!expensesList) { // Add null check for safety
+        console.error("Element #expenses-list not found during renderExpenses!");
+        return;
+    }
     expensesList.innerHTML = '';
     expenses.forEach(e => {
         const li = document.createElement('li');
