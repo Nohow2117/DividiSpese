@@ -1,6 +1,34 @@
-# Dividi Spese - Il Calcolatore Intelligente
+# DividiSpese
 
-Una semplice applicazione web per dividere le spese tra un gruppo di amici.
+## Overview
+DividiSpese is a web application designed to simplify expense splitting among groups of people (e.g., friends, roommates, colleagues). It allows users to create groups, add participants, record shared expenses, and automatically calculate who owes whom, minimizing confusion and manual calculations.
+
+## Goals
+- Provide a simple, intuitive interface for managing shared expenses.
+- Offer quick group creation without mandatory user registration.
+- Calculate balances and necessary transactions accurately.
+- Allow easy sharing of group information via a unique link.
+
+## Key Features (Current & Planned)
+- Group Creation (No registration required)
+- Add/Remove Participants
+- Add/Edit/Delete Expenses (Description, Amount, Payer, Shared between)
+- Automatic Balance Calculation (Who owes whom)
+- Shareable Group Link
+- (Planned) Expense categorization
+- (Planned) Currency support
+- (Planned) User accounts for persistent groups (Optional)
+
+## Basic Setup (Development)
+1.  Clone the repository.
+2.  Backend:
+    - Navigate to the `backend` directory.
+    - Install dependencies: `pip install -r requirements.txt`
+    - Set up the database (e.g., PostgreSQL). Configure connection details.
+    - Run migrations: `flask db upgrade`
+    - Start the Flask server: `flask run`
+3.  Frontend:
+    - The frontend is currently basic HTML/CSS/JS served directly or intended to be hosted separately. Open `frontend/index.html` in a browser or serve it statically.
 
 ## Struttura del Progetto
 
