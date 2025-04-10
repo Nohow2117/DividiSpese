@@ -154,8 +154,8 @@ app.get('/api/groups/:groupUuid/data', async (req, res) => {
         // 4. Combine results
         res.json({
             groupName: groupName, // Include group name in the response
-            participants: participantsResult.rows,
-            expenses: expensesResult.rows
+            participants: participantsResult.rows, // Corrected variable
+            expenses: expensesResult.rows // Corrected variable
         });
 
     } catch (err) {
