@@ -17,7 +17,7 @@
         <p class="subtitle">Calcola automaticamente chi deve cosa a chi in vacanze, tra coinquilini o colleghi</p>
     </header>
 
-    <main class="welcome-main">
+    <main id="welcome-container" class="welcome-main">
         <div class="left-column">
             <div class="illustration-placeholder">
                 <img src="placeholder-image.png" alt="DividiSpese in azione" style="max-width: 100%; height: auto; border: 1px dashed #ccc; display: block; margin: 0 auto;">
@@ -42,7 +42,7 @@
         <div class="right-column">
             <div class="start-card">
                 <h3>Inizia a dividere le spese</h3>
-                <form id="create-group-form" action="javascript:void(0);" onsubmit="createNewGroup()">
+                <form id="create-group-form" action="javascript:void(0);">
                     <input type="text" id="group-name-input" placeholder="Nome del gruppo (es. Vacanza in Sardegna)" required>
                     <button type="submit" id="create-group-button" class="cta-button">CREA GRUPPO SPESE</button>
                 </form>

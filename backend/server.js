@@ -30,6 +30,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS groups (
         id SERIAL PRIMARY KEY,
         group_uuid VARCHAR(12) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -87,24 +88,33 @@ app.use(express.json());
 /**
  * Endpoint per creare un nuovo gruppo/sessione.
  * POST /api/groups
- * @returns {object} { group_uuid: string }
+ * @returns {object} { group_uuid: string, groupName: string }
  */
 app.post('/api/groups', async (req, res) => {
     let group_uuid;
     let attempts = 0;
     const maxAttempts = 5; // Prevent infinite loop in case of unlikely collision storm
+    const { groupName } = req.body; // Get group name from request body
+
+    // Basic validation for group name
+    if (!groupName || groupName.trim() === '') {
+        return res.status(400).json({ error: 'Group name cannot be empty.' });
+    }
 
     try {
         while (attempts < maxAttempts) {
             group_uuid = generateUniqueId(8); // Generate an 8-char ID
             const insertResult = await pool.query(
-                'INSERT INTO groups (group_uuid) VALUES ($1) ON CONFLICT (group_uuid) DO NOTHING RETURNING group_uuid',
-                [group_uuid]
+                'INSERT INTO groups (group_uuid, name) VALUES ($1, $2) ON CONFLICT (group_uuid) DO NOTHING RETURNING group_uuid',
+                [group_uuid, groupName.trim()] // Pass groupName to query
             );
-            if (insertResult.rows.length > 0) {
-                console.log('Nuovo gruppo creato:', group_uuid);
-                return res.status(201).json({ group_uuid: insertResult.rows[0].group_uuid });
+
+            if (insertResult.rowCount > 0) {
+                // Successfully inserted
+                console.log(`Created new group with UUID: ${group_uuid} and Name: ${groupName.trim()}`);
+                return res.status(201).json({ group_uuid: group_uuid, groupName: groupName.trim() }); // Return UUID and Name
             }
+            // Collision occurred, try generating a new UUID
             attempts++;
         }
         // If loop finished without success
@@ -126,10 +136,28 @@ app.get('/api/groups/:groupUuid/data', async (req, res) => {
     const { groupUuid } = req.params;
     console.log(`Fetching data for group UUID: ${groupUuid}`);
     try {
-        // Use groupUuid directly
+        // 1. Fetch group name
+        const groupResult = await pool.query('SELECT name FROM groups WHERE group_uuid = $1', [groupUuid]);
+        if (groupResult.rowCount === 0) {
+            console.log(`Group not found: ${groupUuid}`);
+            return res.status(404).json({ error: 'Group not found' });
+        }
+        const groupName = groupResult.rows[0].name;
+
+        // 2. Fetch participants for the group
         const participantsResult = await pool.query('SELECT * FROM participants WHERE group_id = $1 ORDER BY name', [groupUuid]);
         const expensesResult = await pool.query('SELECT * FROM expenses WHERE group_id = $1 ORDER BY id DESC', [groupUuid]);
-        res.json({ participants: participantsResult.rows, expenses: expensesResult.rows });
+
+        // 3. Fetch expenses for the group
+        // const expensesResult = await pool.query('SELECT * FROM expenses WHERE group_id = $1 ORDER BY id DESC', [groupUuid]);
+
+        // 4. Combine results
+        res.json({
+            groupName: groupName, // Include group name in the response
+            participants: participantsResult.rows,
+            expenses: expensesResult.rows
+        });
+
     } catch (err) {
         // Check if the error is because the group_uuid doesn't exist
         // (This might happen if someone manually types a wrong UUID)
