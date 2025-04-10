@@ -77,7 +77,7 @@ async function loadInitialData() {
     console.log(`Loading data for group: ${currentGroupUuid}`);
     try {
         // Fetch from the correct endpoint that returns all data including name
-        const response = await fetch(`${backendUrl}/groups/${currentGroupUuid}`);
+        const response = await fetch(`${backendUrl}/groups/${currentGroupUuid}/data`); // Added /data
         if (!response.ok) {
             if (response.status === 404) {
                 // Group not found, maybe invalid URL? Redirect to create page.
