@@ -8,7 +8,10 @@ let currentGroupName = null; // Variable to store the group name
 const createSplitContainer = document.getElementById('create-split-container');
 const createError = document.getElementById('create-error');
 const appContainer = document.getElementById('app-container');
-const welcomeContainer = document.getElementById('welcome-container'); // Added for hiding/showing
+const welcomeContainer = document.getElementById('welcome-container'); // The main welcome content area
+const welcomeHeader = document.querySelector('.welcome-header');      // The header above the main content
+const socialProof = document.querySelector('.social-proof');          // The testimonials section below main content
+
 const groupNameInput = document.getElementById('group-name-input'); // Added for create
 const createGroupForm = document.getElementById('create-group-form'); // Added for create
 const currentGroupNameSpan = document.getElementById('current-group-name'); // Added for display
@@ -74,19 +77,19 @@ async function createNewGroup() {
 }
 
 async function loadInitialData() {
-    const appContainer = document.getElementById('app-container');
-    const welcomeContainer = document.getElementById('welcome-container');
-
-    if (!welcomeContainer || !appContainer) {
-        console.error("Welcome or App container not found!");
+    // Ensure all containers exist before proceeding
+    if (!appContainer || !welcomeHeader || !welcomeContainer || !socialProof) {
+        console.error("One or more layout containers not found!");
         return;
     }
 
     if (!currentGroupUuid) {
-        // No group ID in URL, show welcome, hide app
-        console.log("No group UUID in URL, showing welcome screen.");
-        welcomeContainer.style.display = 'block';
-        appContainer.style.display = 'none';
+        // No group ID in URL, show landing sections, hide app
+        console.log("No group UUID in URL, showing landing screen.");
+        welcomeHeader.classList.remove('hidden');
+        welcomeContainer.classList.remove('hidden');
+        socialProof.classList.remove('hidden');
+        appContainer.classList.add('hidden');
         return; // Stop further execution
     }
 
@@ -99,6 +102,11 @@ async function loadInitialData() {
             if (response.status === 404) {
                 // Group not found, maybe invalid URL? Redirect to create page.
                 console.warn('Group not found, redirecting to create page.');
+                // Show landing before redirecting
+                welcomeHeader.classList.remove('hidden');
+                welcomeContainer.classList.remove('hidden');
+                socialProof.classList.remove('hidden');
+                appContainer.classList.add('hidden');
                 window.location.pathname = '/';
                 return;
             }
@@ -110,9 +118,11 @@ async function loadInitialData() {
         document.getElementById('current-group-name').textContent = currentGroupName || 'Senza Nome';
         document.getElementById('group-share-link').textContent = window.location.href;
 
-        // Successfully loaded data, show app, hide welcome
-        welcomeContainer.style.display = 'none';
-        appContainer.style.display = 'block';
+        // Successfully loaded data, hide landing sections, show app
+        welcomeHeader.classList.add('hidden');
+        welcomeContainer.classList.add('hidden');
+        socialProof.classList.add('hidden');
+        appContainer.classList.remove('hidden');
 
         // Populate UI
         participants = data.participants;
@@ -142,9 +152,11 @@ async function loadInitialData() {
     } catch (error) {
         console.error('Errore caricamento dati iniziali:', error);
         alert('Errore nel caricamento dei dati per questo gruppo. Prova a crearne uno nuovo.');
-        // Error loading, show welcome, hide app (or redirect)
-        welcomeContainer.style.display = 'block'; // Show welcome screen
-        appContainer.style.display = 'none'; // Hide app content
+        // Error loading, show landing sections, hide app
+        welcomeHeader.classList.remove('hidden');
+        welcomeContainer.classList.remove('hidden');
+        socialProof.classList.remove('hidden');
+        appContainer.classList.add('hidden');
         // Optional: Redirect to home if loading fails for an existing UUID
         // window.history.pushState({}, '', '/');
         // Or clear the currentGroupUuid state if needed
@@ -629,32 +641,37 @@ function setupEventListeners() {
 
 // --- Initialization ---
 function initApp() {
-    console.log('Initializing app...');
-    const path = window.location.pathname;
-    const pathSegments = path.split('/').filter(segment => segment !== ''); // Filter out empty segments
+    console.log('Initializing App');
+    // Check if the necessary containers exist
+    if (!appContainer || !welcomeHeader || !welcomeContainer || !socialProof) {
+        console.error('Essential layout containers not found during init. Aborting.');
+        // Maybe display a user-friendly error message here
+        return;
+    }
 
-    console.log('Path segments:', pathSegments);
+    const pathSegments = window.location.pathname.split('/').filter(segment => segment);
 
-    // Simple check: path looks like /<8_chars>
-    if (pathSegments.length === 1 && /^[a-zA-Z0-9]{8}$/.test(pathSegments[0])) {
+    if (pathSegments.length === 1 && pathSegments[0].length > 5) { // Basic check for UUID-like path
         // We are on a group page (e.g., /abcdefgh)
         currentGroupUuid = pathSegments[0];
         console.log('Detected Group UUID:', currentGroupUuid);
-        if (welcomeContainer) welcomeContainer.style.display = 'none';
-        if (appContainer) appContainer.style.display = 'block';
+        welcomeHeader.classList.add('hidden');
+        welcomeContainer.classList.add('hidden');
+        socialProof.classList.add('hidden');
+        appContainer.classList.remove('hidden');
         loadInitialData();
     } else {
         // We are on the welcome/create page (e.g., / or /index.html or /somethingElse)
-        console.log('On welcome page or unrecognized path');
+        console.log('On welcome/create page.');
         currentGroupUuid = null;
-        if (welcomeContainer) welcomeContainer.style.display = 'block'; // Show welcome
-        if (appContainer) appContainer.style.display = 'none'; // Hide app
+        welcomeHeader.classList.remove('hidden'); // Show welcome
+        welcomeContainer.classList.remove('hidden'); // Show welcome
+        socialProof.classList.remove('hidden'); // Show welcome
+        appContainer.classList.add('hidden'); // Hide app
         // No initial data to load for the welcome page
     }
 
     setupEventListeners();
-    // Optionally clear local storage if not needed
-    // localStorage.removeItem(LOCAL_STORAGE_KEY);
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

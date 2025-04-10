@@ -218,6 +218,11 @@ body {
     font-size: 0.9em;
 }
 
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
 /* App Container Styles (Keep existing ones and potentially adjust) */
 /* ... (Existing styles for #app-container sections) ... */
 
