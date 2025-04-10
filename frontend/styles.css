@@ -76,6 +76,8 @@ body {
     display: flex;
     flex-direction: column; /* Stack benefits vertically */
     gap: 15px; /* Space between benefit items */
+    align-items: center; /* Center items horizontally for mobile */
+    margin-top: 30px; /* Add some space below mockup */
 }
 
 .benefit-item {
@@ -83,6 +85,7 @@ body {
     align-items: center;
     gap: 10px; /* Space between icon and text */
     font-size: 1.1em;
+    padding: 5px 0; /* Add slight vertical padding */
 }
 
 .benefit-item i {
@@ -260,6 +263,25 @@ body {
     }
     .mockup-image {
         max-width: 40%; /* Desktop - 60% reduction */
+    }
+    .benefits {
+        flex-direction: row; /* Horizontal layout */
+        justify-content: space-around; /* Distribute items */
+        align-items: flex-start; /* Align tops */
+        margin-top: 40px;
+    }
+
+    .benefit-item {
+        flex-direction: column; /* Stack icon and text vertically */
+        text-align: center;
+        gap: 8px; /* Adjust gap for vertical stacking */
+        max-width: 180px; /* Limit width */
+        padding: 0;
+    }
+
+    .benefit-item i {
+        width: auto; /* Reset fixed width */
+        font-size: 1.6em; /* Slightly larger icon */
     }
 }
 
