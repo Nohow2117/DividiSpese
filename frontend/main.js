@@ -245,6 +245,34 @@ async function removeExpense(id) {
     }
 }
 
+async function handleDeleteGroupClick() {
+    if (!currentGroupUuid) return;
+
+    const confirmation = confirm(`Sei sicuro di voler eliminare questo gruppo (${currentGroupName || 'Senza Nome'}) e tutti i suoi dati? L'azione è irreversibile.`);
+
+    if (!confirmation) {
+        return;
+    }
+
+    console.log(`Attempting to delete group: ${currentGroupUuid}`);
+    try {
+        const response = await fetch(`${backendUrl}/groups/${currentGroupUuid}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) { // Status 200-299
+            alert('Gruppo eliminato con successo!');
+            window.location.pathname = '/'; // Redirect to homepage
+        } else {
+            const errorData = await response.json().catch(() => ({ error: `Errore HTTP: ${response.status}` }));
+            throw new Error(errorData.error || `Errore HTTP: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Errore eliminazione gruppo:', error);
+        alert(`Errore durante l'eliminazione del gruppo: ${error.message}`);
+    }
+}
+
 // --- Rendering Functions ---
 function renderParticipants() {
     participantsList.innerHTML = '';
@@ -509,6 +537,14 @@ function setupEventListeners() {
     });
 
     calculateBalancesBtn.addEventListener('click', calculateBalances);
+
+    // Add listener for the new delete button
+    const deleteButton = document.getElementById('delete-group-button');
+    if (deleteButton) {
+        deleteButton.addEventListener('click', handleDeleteGroupClick);
+    } else {
+        console.warn('Delete group button not found for event listener setup.');
+    }
 }
 
 // --- Initialization ---
@@ -560,8 +596,4 @@ function copyLink() {
     } else {
         alert('Impossibile copiare il link.');
     }
-}
-
-function goBackToWelcome() {
-    window.location.pathname = '/';
 }

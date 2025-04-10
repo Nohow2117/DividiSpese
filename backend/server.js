@@ -245,6 +245,39 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
 });
 
 /**
+ * Endpoint per eliminare un gruppo e tutti i dati associati.
+ * DELETE /api/groups/:groupUuid
+ */
+app.delete('/api/groups/:groupUuid', async (req, res) => {
+    const { groupUuid } = req.params;
+    console.log(`Attempting to delete group UUID: ${groupUuid}`);
+
+    try {
+        // Check if group exists before deleting (optional but good practice)
+        const checkResult = await pool.query('SELECT 1 FROM groups WHERE group_uuid = $1', [groupUuid]);
+        if (checkResult.rowCount === 0) {
+            console.log(`Group not found for deletion: ${groupUuid}`);
+            return res.status(404).json({ error: 'Gruppo non trovato.' });
+        }
+
+        // Delete the group. Cascading deletes will handle participants and expenses.
+        const deleteResult = await pool.query('DELETE FROM groups WHERE group_uuid = $1', [groupUuid]);
+
+        if (deleteResult.rowCount > 0) {
+            console.log(`Successfully deleted group ${groupUuid}`);
+            res.status(200).json({ message: 'Gruppo eliminato con successo.' }); // Use 200 or 204
+        } else {
+            // Should not happen if the check above passed, but good to handle
+            console.warn(`Group ${groupUuid} was found but deletion returned 0 rows.`);
+            res.status(500).json({ error: 'Errore durante l\'eliminazione del gruppo.' });
+        }
+    } catch (err) {
+        console.error(`Error deleting group ${groupUuid}:`, err);
+        res.status(500).json({ error: 'Errore server durante l\'eliminazione del gruppo.' });
+    }
+});
+
+/**
  * Endpoint per rimuovere un partecipante da un gruppo.
  * DELETE /api/groups/:groupUuid/participants/:participantId
  * @returns {object} Messaggio di successo o errore.
