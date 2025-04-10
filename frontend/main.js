@@ -73,7 +73,23 @@ async function createNewGroup() {
 }
 
 async function loadInitialData() {
-    if (!currentGroupUuid) return; // Don't load if no group context
+    const appContainer = document.getElementById('app-container');
+    const welcomeContainer = document.getElementById('welcome-container');
+
+    if (!welcomeContainer || !appContainer) {
+        console.error("Welcome or App container not found!");
+        return;
+    }
+
+    if (!currentGroupUuid) {
+        // No group ID in URL, show welcome, hide app
+        console.log("No group UUID in URL, showing welcome screen.");
+        welcomeContainer.style.display = 'block';
+        appContainer.style.display = 'none';
+        return; // Stop further execution
+    }
+
+    // Group ID is present, attempt to load data
     console.log(`Loading data for group: ${currentGroupUuid}`);
     try {
         // Fetch from the correct endpoint that returns all data including name
@@ -88,14 +104,23 @@ async function loadInitialData() {
             throw new Error(`Errore HTTP: ${response.status}`);
         }
         const data = await response.json();
-        participants = data.participants || [];
+        console.log('Dati caricati:', data);
+        currentGroupName = data.groupName || ''; // Store group name
+        document.getElementById('current-group-name').textContent = currentGroupName || 'Senza Nome';
+        document.getElementById('group-share-link').textContent = window.location.href;
+
+        // Successfully loaded data, show app, hide welcome
+        welcomeContainer.style.display = 'none';
+        appContainer.style.display = 'block';
+
+        // Populate UI
+        participants = data.participants;
         expenses = data.expenses || [];
-        const groupName = data.groupName || 'Gruppo Senza Nome'; // Get group name
-        console.log('Dati caricati:', { groupName, participants, expenses });
+        console.log('Dati caricati:', { groupName: currentGroupName, participants, expenses });
 
         // Display group name
         if (currentGroupNameSpan) {
-            currentGroupNameSpan.textContent = groupName;
+            currentGroupNameSpan.textContent = currentGroupName;
         } else {
             console.error('Element #current-group-name not found');
         }
@@ -114,11 +139,15 @@ async function loadInitialData() {
         renderExpenses();
         updateParticipantOptions();
     } catch (error) {
-        console.error('Errore nel caricamento dati:', error);
-        // Optionally show an error message to the user in the app container
-        appContainer.innerHTML = `<p class="error-message">Errore nel caricamento dei dati per questo gruppo. Prova a <a href="/">crearne uno nuovo</a>.</p>`;
-        appContainer.style.display = 'block';
-        createSplitContainer.style.display = 'none';
+        console.error('Errore caricamento dati iniziali:', error);
+        alert('Errore nel caricamento dei dati per questo gruppo. Prova a crearne uno nuovo.');
+        // Error loading, show welcome, hide app (or redirect)
+        welcomeContainer.style.display = 'block'; // Show welcome screen
+        appContainer.style.display = 'none'; // Hide app content
+        // Optional: Redirect to home if loading fails for an existing UUID
+        // window.history.pushState({}, '', '/');
+        // Or clear the currentGroupUuid state if needed
+        // currentGroupUuid = null;
     }
 }
 
