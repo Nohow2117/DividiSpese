@@ -21,13 +21,15 @@ const expenseForm = document.getElementById('add-expense-form');
 const expenseDescriptionInput = document.getElementById('expense-description');
 const expenseAmountInput = document.getElementById('expense-amount');
 const paidBySelect = document.getElementById('paid-by');
-const expenseParticipantsDiv = document.getElementById('expense-participants');
 const selectAllBtn = document.getElementById('select-all-participants');
 const deselectAllBtn = document.getElementById('deselect-all-participants');
 
 const calculateBalancesBtn = document.getElementById('calculate-balances');
-const individualBalancesList = document.getElementById('individual-balances');
-const transactionsList = document.getElementById('transactions-list');
+const individualBalancesList = document.getElementById('individual-balances'); 
+const transactionsList = document.getElementById('transactions-list'); 
+const expenseParticipantsDiv = document.getElementById('expense-participants'); 
+
+const deleteButton = document.getElementById('delete-group-button');
 
 // --- Backend API URL ---
 // Use relative URL since frontend is served by the same backend
@@ -354,6 +356,12 @@ function renderExpenses() {
 
 // Update dropdown and checkboxes when participants change
 function updateParticipantOptions() {
+    // Ensure elements exist before using
+    if (!paidBySelect || !expenseParticipantsDiv) {
+        console.error("Could not find paidBySelect or expenseParticipantsDiv in updateParticipantOptions");
+        return;
+    }
+
     // Update "Paid by" dropdown
     paidBySelect.innerHTML = '<option value="" disabled selected>-- Seleziona chi ha pagato --</option>';
     participants.forEach(p => {
@@ -367,7 +375,18 @@ function updateParticipantOptions() {
 }
 
 function updateParticipantCheckboxes() {
-    // Update "Split among" checkboxes
+    // Ensure element exists
+    if (!expenseParticipantsDiv) {
+        console.error("Element #expense-participants not found during updateParticipantCheckboxes!");
+        return;
+    }
+    // Ensure participants array is valid
+    if (!participants || !Array.isArray(participants)) {
+         console.error("Participants array is invalid during updateParticipantCheckboxes!");
+         expenseParticipantsDiv.innerHTML = '<li>Errore: lista partecipanti non valida</li>';
+         return;
+    }
+
     expenseParticipantsDiv.innerHTML = '';
     participants.forEach(p => {
         const div = document.createElement('div');
@@ -425,6 +444,11 @@ function calculateBalances() {
 }
 
 function renderIndividualBalances(balances) {
+    // Ensure element exists
+    if (!individualBalancesList) {
+        console.error("Element #individual-balances not found during renderIndividualBalances");
+        return;
+    }
     individualBalancesList.innerHTML = '';
     balances.forEach((balance, participantId) => {
         const participant = participants.find(p => p.id === participantId);
@@ -443,6 +467,11 @@ function renderIndividualBalances(balances) {
 }
 
 function calculateTransactions(balances) {
+    // Ensure element exists
+    if (!transactionsList) {
+        console.error("Element #transactions-list not found during calculateTransactions");
+        return;
+    }
     transactionsList.innerHTML = '';
     const transactions = [];
     const creditors = []; // { id: participantId, amount: amountOwed }
@@ -504,8 +533,17 @@ function calculateTransactions(balances) {
 }
 
 function clearBalances() {
-    individualBalancesList.innerHTML = '';
-    transactionsList.innerHTML = '';
+    // Ensure elements exist
+    if (individualBalancesList) {
+        individualBalancesList.innerHTML = '';
+    } else {
+        console.warn("Element #individual-balances not found during clearBalances");
+    }
+    if (transactionsList) {
+        transactionsList.innerHTML = '';
+    } else {
+        console.warn("Element #transactions-list not found during clearBalances");
+    }
 }
 
 // --- Event Listeners ---
