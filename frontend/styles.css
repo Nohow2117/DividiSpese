@@ -64,6 +64,14 @@ body {
     /* Add styles for the actual image later */
 }
 
+.mockup-image {
+    display: block; /* Needed for margin auto to work */
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 80%; /* Default (Mobile) - 20% reduction */
+    height: auto; /* Maintain aspect ratio */
+}
+
 .benefits {
     display: flex;
     flex-direction: column; /* Stack benefits vertically */
@@ -249,6 +257,9 @@ body {
     }
     #balance-section {
         flex-basis: 100%; /* Full width for balance */
+    }
+    .mockup-image {
+        max-width: 40%; /* Desktop - 60% reduction */
     }
 }
 
