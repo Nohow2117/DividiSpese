@@ -24,8 +24,8 @@ const paidBySelect = document.getElementById('paid-by');
 const selectAllBtn = document.getElementById('select-all-participants');
 const deselectAllBtn = document.getElementById('deselect-all-participants');
 
-const calculateBalancesBtn = document.getElementById('calculate-balances');
-const individualBalancesList = document.getElementById('individual-balances'); 
+const calculateBalancesBtn = document.getElementById('calculate-balance-button'); // Corrected ID
+const individualBalancesList = document.getElementById('individual-balances-list'); // Corrected ID
 const transactionsList = document.getElementById('transactions-list'); 
 const expenseParticipantsDiv = document.getElementById('expense-participants'); 
 
@@ -613,9 +613,11 @@ function setupEventListeners() {
         });
     }
 
-    const calculateBalancesBtn = document.getElementById('calculate-balances');
-    if (calculateBalancesBtn) {
+    // Calculate balances button
+    if (calculateBalancesBtn) { 
         calculateBalancesBtn.addEventListener('click', calculateBalances);
+    } else {
+        console.error("Calculate balances button (#calculate-balance-button) not found!");
     }
 
     // Add listener for the new delete button
