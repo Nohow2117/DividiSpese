@@ -275,9 +275,7 @@ async function removeExpense(id) {
 }
 
 async function handleDeleteGroupClick() {
-    console.log("DEBUG: handleDeleteGroupClick called. currentGroupUuid:", currentGroupUuid); // Added log
     if (!currentGroupUuid) {
-        console.log("DEBUG: No currentGroupUuid, exiting delete handler."); // Added log
         return;
     }
 
@@ -509,18 +507,15 @@ function clearBalances() {
 // --- Event Listeners ---
 function setupEventListeners() {
     // Listener for creating a new group
-    if (createGroupForm) {
-        createGroupForm.addEventListener('submit', (event) => {
+    const groupForm = document.getElementById('create-group-form');
+    if (groupForm) {
+        groupForm.addEventListener('submit', (event) => {
             event.preventDefault(); // Prevent default form submission
             createNewGroup();
         });
-    } else {
-        console.warn('Create group form not found for event listener setup.');
-        // If using the old button structure, adapt here
-        // const createButton = document.getElementById('create-group-button');
-        // if (createButton) { ... }
     }
 
+    const participantForm = document.getElementById('add-participant-form');
     if (participantForm) {
         participantForm.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -533,6 +528,7 @@ function setupEventListeners() {
         });
     }
 
+    const expenseForm = document.getElementById('add-expense-form');
     if (expenseForm) {
         expenseForm.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -559,25 +555,31 @@ function setupEventListeners() {
         });
     }
 
-    selectAllBtn.addEventListener('click', () => {
-        expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
-            .forEach(cb => cb.checked = true);
-    });
+    const selectAllBtn = document.getElementById('select-all-participants');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
+                .forEach(cb => cb.checked = true);
+        });
+    }
 
-    deselectAllBtn.addEventListener('click', () => {
-        expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
-            .forEach(cb => cb.checked = false);
-    });
+    const deselectAllBtn = document.getElementById('deselect-all-participants');
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', () => {
+            expenseParticipantsDiv.querySelectorAll('input[type="checkbox"]')
+                .forEach(cb => cb.checked = false);
+        });
+    }
 
-    calculateBalancesBtn.addEventListener('click', calculateBalances);
+    const calculateBalancesBtn = document.getElementById('calculate-balances');
+    if (calculateBalancesBtn) {
+        calculateBalancesBtn.addEventListener('click', calculateBalances);
+    }
 
     // Add listener for the new delete button
     const deleteButton = document.getElementById('delete-group-button');
     if (deleteButton) {
-        console.log("DEBUG: Attaching listener to delete button:", deleteButton); // Added log
         deleteButton.addEventListener('click', handleDeleteGroupClick);
-    } else {
-        console.warn('Delete group button not found for event listener setup.');
     }
 }
 
