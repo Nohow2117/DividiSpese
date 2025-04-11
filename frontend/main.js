@@ -585,6 +585,36 @@ function handleTabClick(event) {
             panel.classList.remove('active-panel');
         }
     });
+    
+    // Update progress steps based on active tab
+    updateProgressSteps(targetPanelId);
+}
+
+// Function to update progress steps based on active tab
+function updateProgressSteps(activePanelId) {
+    // Map tab IDs to step numbers
+    const stepMap = {
+        'participants-section': 2, // Step 2 - Partecipanti
+        'expenses-section': 3,    // Step 3 - Spese
+        'balance-section': 4      // Step 4 - Saldi
+    };
+    
+    const activeStep = stepMap[activePanelId];
+    
+    // Reset all steps first
+    document.querySelectorAll('.progress-steps li').forEach((step, index) => {
+        const stepNumber = index + 1;
+        if (stepNumber < activeStep) {
+            // Steps before active step are 'done'
+            step.className = 'step-done';
+        } else if (stepNumber === activeStep) {
+            // Current step is 'active'
+            step.className = 'step-active';
+        } else {
+            // Future steps are 'todo'
+            step.className = 'step-todo';
+        }
+    });
 }
 
 // --- Event Listeners ---
@@ -696,6 +726,18 @@ function initApp() {
         socialProof.classList.add('hidden');
         appContainer.classList.remove('hidden');
         loadInitialData();
+        
+        // Initialize progress steps based on active tab - this is the new code
+        setTimeout(() => {
+            // Find which tab panel is active after everything has loaded
+            const activePanel = document.querySelector('.tab-panel.active-panel');
+            if (activePanel) {
+                updateProgressSteps(activePanel.id);
+            } else {
+                // Default to first tab (participants) if none active
+                updateProgressSteps('participants-section');
+            }
+        }, 100); // Small delay to ensure DOM is ready
     } else {
         // We are on the welcome/create page (e.g., / or /index.html or /somethingElse)
         console.log('On welcome/create page.');
