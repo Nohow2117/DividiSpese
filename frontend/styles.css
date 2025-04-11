@@ -362,6 +362,9 @@ body {
 }
 .tab-navigation button i {
     margin-right: 5px;
+    width: 1.2em; /* Add fixed width */
+    display: inline-block; /* Needed for width to apply correctly */
+    text-align: center; /* Center icon within its fixed width */
 }
 
 .tab-navigation button:hover {
@@ -370,7 +373,7 @@ body {
 }
 
 .tab-navigation button[aria-selected="true"] {
-    color: #007bff;
+    color: #007bff !important; /* Added !important for diagnosis */
     border-bottom-color: #007bff;
     opacity: 1.0;
 }
