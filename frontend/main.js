@@ -703,6 +703,32 @@ function setupEventListeners() {
     } else {
         console.warn("Tab navigation container (.tab-navigation) not found!");
     }
+    
+    // Share button event listeners
+    const shareButton = document.getElementById('share-button');
+    const shareOptions = document.querySelectorAll('.share-option');
+    
+    if (shareButton) {
+        shareButton.addEventListener('click', toggleShareDropdown);
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.share-options')) {
+                hideShareDropdown();
+            }
+        });
+    }
+    
+    // Add event listeners to share options
+    if (shareOptions.length > 0) {
+        shareOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                const platform = option.getAttribute('data-platform');
+                shareLink(platform);
+            });
+        });
+    }
 }
 
 // --- Initialization ---
@@ -755,6 +781,16 @@ function initApp() {
 document.addEventListener('DOMContentLoaded', initApp);
 
 // --- Utility Functions ---
+function toggleShareDropdown() {
+    const dropdown = document.getElementById('share-dropdown');
+    dropdown.classList.toggle('show');
+}
+
+function hideShareDropdown() {
+    const dropdown = document.getElementById('share-dropdown');
+    dropdown.classList.remove('show');
+}
+
 function copyLink() {
     const linkElement = document.getElementById('group-share-link');
     const linkToCopy = linkElement ? linkElement.textContent : null;
@@ -762,7 +798,14 @@ function copyLink() {
     if (linkToCopy && navigator.clipboard) {
         navigator.clipboard.writeText(linkToCopy)
             .then(() => {
-                alert('Link copiato negli appunti!');
+                // Temporary feedback without alert
+                const copyOption = document.querySelector('.share-option[data-platform="copy"]');
+                const originalText = copyOption.innerHTML;
+                copyOption.innerHTML = '<i class="fas fa-check"></i> Copiato!';
+                setTimeout(() => {
+                    copyOption.innerHTML = originalText;
+                    hideShareDropdown();
+                }, 1500);
             })
             .catch(err => {
                 console.error('Errore nel copiare il link:', err);
@@ -771,4 +814,38 @@ function copyLink() {
     } else {
         alert('Impossibile copiare il link.');
     }
+}
+
+function shareLink(platform) {
+    const linkElement = document.getElementById('group-share-link');
+    const shareUrl = linkElement ? linkElement.textContent : window.location.href;
+    const groupName = document.getElementById('current-group-name').textContent;
+    const shareText = `Gruppo Spese: ${groupName}`;
+    
+    let shareLink = '';
+    
+    switch(platform) {
+        case 'whatsapp':
+            shareLink = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+            break;
+        case 'telegram':
+            shareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+            break;
+        case 'messenger':
+            shareLink = `https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=291494419107518&redirect_uri=${encodeURIComponent(window.location.href)}`;
+            break;
+        case 'email':
+            shareLink = `mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent('Ecco il link al nostro gruppo spese: ' + shareUrl)}`;
+            break;
+        case 'copy':
+            copyLink();
+            return;
+        default:
+            console.error('Piattaforma di condivisione non supportata:', platform);
+            return;
+    }
+    
+    // Open in a new tab/window
+    window.open(shareLink, '_blank');
+    hideShareDropdown();
 }
