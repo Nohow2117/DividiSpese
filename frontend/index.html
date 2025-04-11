@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DividiSpese | Calcola e Dividi le Spese di Gruppo Facilmente</title>
+    <title>DividiSpese - Dividi le spese di gruppo</title>
     <meta name="description" content="Dividi le spese tra amici, coinquilini o in vacanza senza discussioni. Calcola automaticamente chi deve quanto a chi con DividiSpese, gratis e senza registrazione.">
     <meta name="keywords" content="dividere spese, divisione spese gruppo, calcolo spese vacanza, spese coinquilini, app divisione conti">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
 
@@ -76,9 +77,27 @@
         <p>Condividi questo link: <code id="group-share-link"></code> <button onclick="copyLink()">Copia</button></p>
         <p><button id="delete-group-button" class="button-danger">Elimina Gruppo</button></p>
 
-        <div class="row">
-            <section id="participants-section">
-                <h2>Partecipanti</h2>
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <ol class="progress-steps">
+                <li class="step-done"><span>1. Creazione gruppo</span></li>
+                <li class="step-active"><span>2. Aggiungi partecipanti</span></li>
+                <li class="step-todo"><span>3. Inserisci spese</span></li>
+                <li class="step-todo"><span>4. Calcola saldi</span></li>
+            </ol>
+        </div>
+
+        <!-- Tab Navigation (Mobile Only) -->
+        <ul class="tab-navigation" role="tablist">
+            <li role="presentation"><button id="tab-participants" role="tab" aria-selected="true" aria-controls="participants-section"><i class="fas fa-users"></i> Partecipanti</button></li>
+            <li role="presentation"><button id="tab-expenses" role="tab" aria-selected="false" aria-controls="expenses-section"><i class="fas fa-receipt"></i> Spese</button></li>
+            <li role="presentation"><button id="tab-balance" role="tab" aria-selected="false" aria-controls="balance-section"><i class="fas fa-balance-scale"></i> Saldi</button></li>
+        </ul>
+
+        <!-- Main Content Sections (Desktop Columns / Mobile Tab Panels) -->
+        <div class="row content-area">
+            <section id="participants-section" class="tab-panel active-panel" role="tabpanel" aria-labelledby="tab-participants">
+                <h2><i class="fas fa-users"></i> Partecipanti</h2>
                 <form id="add-participant-form">
                     <input type="text" id="participant-name" placeholder="Nome partecipante" required>
                     <button type="submit">Aggiungi Partecipante</button>
@@ -86,8 +105,8 @@
                 <ul id="participants-list"></ul>
             </section>
 
-            <section id="expenses-section">
-                <h2>Spese</h2>
+            <section id="expenses-section" class="tab-panel" role="tabpanel" aria-labelledby="tab-expenses">
+                <h2><i class="fas fa-receipt"></i> Spese</h2>
                 <form id="add-expense-form">
                     <div>
                         <label for="expense-description">Descrizione:</label>
@@ -113,8 +132,8 @@
                 <ul id="expenses-list"></ul>
             </section>
 
-            <section id="balance-section">
-                <h2>Saldi</h2>
+            <section id="balance-section" class="tab-panel" role="tabpanel" aria-labelledby="tab-balance">
+                <h2><i class="fas fa-balance-scale"></i> Saldi</h2>
                 <button id="calculate-balance-button">Calcola Saldi</button>
                 <h3>Saldi Individuali</h3>
                 <ul id="individual-balances-list"></ul>

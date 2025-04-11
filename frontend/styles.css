@@ -224,6 +224,223 @@ body {
 }
 
 /* App Container Styles (Keep existing ones and potentially adjust) */
+#app-container {
+    padding-top: 20px; /* Add some space */
+}
+
+/* --- Progress Bar --- */
+.progress-container {
+    margin-bottom: 25px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.progress-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9em;
+    counter-reset: step; /* Initialize counter */
+}
+
+.progress-steps li {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    color: #aaa; /* Default color for todo steps */
+}
+
+/* Style step numbers/icons */
+.progress-steps li::before {
+    content: ''; /* Placeholder for line */
+    position: absolute;
+    top: 50%;
+    left: -50%;
+    width: 100%;
+    height: 2px;
+    background-color: #ddd;
+    z-index: -1;
+}
+
+.progress-steps li:first-child::before {
+    content: none; /* No line before the first step */
+}
+
+/* Circle indicator */
+.progress-steps li span {
+    display: inline-block;
+    width: 25px; /* Circle size */
+    height: 25px;
+    line-height: 25px;
+    border-radius: 50%;
+    background-color: #ddd; /* Default background */
+    color: white;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 5px; /* Space between circle and text */
+    font-size: 0.8em; /* Size for number inside */
+    counter-increment: step; /* Increment counter */
+    content: counter(step); /* Display counter number */
+}
+
+/* Override counter for text */
+.progress-steps li span > span {
+    display: block; /* Make inner span take space */
+    width: auto; height: auto; line-height: normal; /* Reset inner span styles */
+    background: none; color: inherit; border-radius: 0; /* Reset inner span styles */
+    margin: 0; font-size: 1em; content: none; /* Reset inner span styles */
+    position: absolute;
+    top: 30px; /* Position text below circle */
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap; /* Prevent text wrapping */
+    font-weight: normal;
+}
+
+
+/* Active Step */
+.progress-steps li.step-active span {
+    background-color: #007bff; /* Active color */
+}
+.progress-steps li.step-active {
+    color: #007bff; /* Active text color */
+    font-weight: bold;
+}
+.progress-steps li.step-active::before {
+     background-color: #007bff; /* Color line before active step */
+}
+
+
+/* Done Step */
+.progress-steps li.step-done span {
+    background-color: #28a745; /* Done color */
+    content: '\f00c'; /* Font Awesome check icon */
+    font-family: 'Font Awesome 6 Free'; /* Ensure Font Awesome is used */
+    font-weight: 900;
+}
+.progress-steps li.step-done {
+    color: #28a745; /* Done text color */
+}
+.progress-steps li.step-done::before {
+    background-color: #28a745; /* Color line before done step */
+}
+.progress-steps li.step-done span > span {
+    color: #666; /* Keep text below done steps muted */
+}
+
+
+/* --- Tab Navigation (Mobile First) --- */
+.tab-navigation {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    display: flex; /* Changed from block */
+    justify-content: space-around; /* Distribute tabs */
+    border-bottom: 1px solid #ddd;
+}
+
+.tab-navigation li {
+   flex: 1; /* Make tabs share space */
+   text-align: center;
+}
+
+.tab-navigation button {
+    padding: 10px 15px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1em;
+    color: #555;
+    width: 100%; /* Make button fill li */
+    border-bottom: 3px solid transparent; /* Placeholder for active indicator */
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.tab-navigation button i {
+    margin-right: 5px;
+}
+
+.tab-navigation button:hover {
+    color: #0056b3;
+}
+
+.tab-navigation button[aria-selected="true"] {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    font-weight: bold;
+}
+
+/* Hide all panels by default (mobile) */
+.tab-panel {
+    display: none;
+}
+
+/* Show the active panel */
+.tab-panel.active-panel {
+    display: block;
+}
+
+
+/* --- Desktop Layout (Columns/Cards) --- */
+@media (min-width: 768px) { /* Apply styles for screens wider than 768px */
+
+    /* Hide mobile tabs */
+    .tab-navigation {
+        display: none;
+    }
+
+    /* Show all panels and arrange as columns */
+    .content-area {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .tab-panel {
+        display: block !important; /* Override mobile hiding, ensure visibility */
+        flex: 1; /* Distribute space among columns */
+        min-width: 280px; /* Prevent columns from becoming too narrow */
+
+        /* Card Styling */
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border: 1px solid #eee;
+        margin-bottom: 20px; /* Add space between rows if they wrap */
+    }
+
+    .tab-panel h2 {
+        margin-top: 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 15px;
+        font-size: 1.4em;
+        color: #333;
+    }
+     .tab-panel h2 i {
+        margin-right: 8px;
+        color: #007bff; /* Icon color */
+    }
+
+    /* Ensure sections take full width if needed on medium screens */
+    /* Example: Make balance section wider if needed */
+    /* #balance-section {
+        flex-basis: 40%; or specific width
+    } */
+
+}
+
+
+/* Icon styling in headers */
+#app-container h2 i {
+    margin-right: 8px;
+    /* color: #007bff; Already styled within @media */
+}
+
+/* App Container Styles (Keep existing ones and potentially adjust) */
 /* ... (Existing styles for #app-container sections) ... */
 
 #app-container h1 {

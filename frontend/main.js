@@ -34,6 +34,10 @@ const expenseParticipantsDiv = document.getElementById('expense-participants');
 
 const deleteButton = document.getElementById('delete-group-button');
 
+// Tab Navigation Elements (New)
+const tabNavigation = document.querySelector('.tab-navigation');
+const tabPanels = document.querySelectorAll('.tab-panel');
+
 // --- Backend API URL ---
 // Use relative URL since frontend is served by the same backend
 const backendUrl = '/api'; // Changed base URL to /api
@@ -558,9 +562,34 @@ function clearBalances() {
     }
 }
 
+// --- Tab Switching Logic ---
+function handleTabClick(event) {
+    const clickedTab = event.target.closest('button[role="tab"]');
+
+    if (!clickedTab) return; // Exit if click wasn't on a tab button
+
+    const targetPanelId = clickedTab.getAttribute('aria-controls');
+    const targetPanel = document.getElementById(targetPanelId);
+
+    // Update tab button states
+    tabNavigation.querySelectorAll('button[role="tab"]').forEach(tab => {
+        tab.setAttribute('aria-selected', 'false');
+    });
+    clickedTab.setAttribute('aria-selected', 'true');
+
+    // Update panel visibility
+    tabPanels.forEach(panel => {
+        if (panel.id === targetPanelId) {
+            panel.classList.add('active-panel');
+        } else {
+            panel.classList.remove('active-panel');
+        }
+    });
+}
+
 // --- Event Listeners ---
 function setupEventListeners() {
-    // Listener for creating a new group
+    // Create Group Form
     const groupForm = document.getElementById('create-group-form');
     if (groupForm) {
         groupForm.addEventListener('submit', (event) => {
@@ -636,6 +665,13 @@ function setupEventListeners() {
     const deleteButton = document.getElementById('delete-group-button');
     if (deleteButton) {
         deleteButton.addEventListener('click', handleDeleteGroupClick);
+    }
+
+    // Tab Navigation Listener (New)
+    if (tabNavigation) {
+        tabNavigation.addEventListener('click', handleTabClick);
+    } else {
+        console.warn("Tab navigation container (.tab-navigation) not found!");
     }
 }
 
