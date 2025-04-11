@@ -338,13 +338,14 @@ body {
     list-style: none;
     padding: 0;
     margin: 0 0 20px 0;
-    display: flex; /* Changed from block */
-    justify-content: space-around; /* Distribute tabs */
+    display: grid; /* Changed from flex */
+    grid-template-columns: repeat(3, 1fr); /* Create 3 equal columns */
+    /* justify-content: space-around; */ /* Removed flex property */
     border-bottom: 1px solid #ddd;
 }
 
 .tab-navigation li {
-   flex: 1; /* Make tabs share space */
+   /* flex: 1; */ /* Removed flex property */
    text-align: center;
 }
 
@@ -373,7 +374,7 @@ body {
 }
 
 .tab-navigation button[aria-selected="true"] {
-    color: #007bff !important; /* Added !important for diagnosis */
+    color: #007bff; /* Removed !important */
     border-bottom-color: #007bff;
     opacity: 1.0;
 }
