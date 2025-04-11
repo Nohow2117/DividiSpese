@@ -336,24 +336,26 @@ body {
 /* --- Tab Navigation (Mobile First) --- */
 .tab-navigation {
     list-style: none;
-    display: table; /* Use table layout instead of flex */
-    table-layout: fixed; /* Critical: ensures equal column sizes */
+    display: flex;
+    flex-direction: row; /* Explicitly horizontal */
+    flex-wrap: nowrap; /* Prevent wrapping to new line */
     width: 100%;
     padding: 0;
     margin: 0 0 20px 0;
     border-bottom: 1px solid #ddd;
-    border-collapse: collapse; /* Remove spacing between cells */
     box-sizing: border-box;
+    /* Debug outline */
+    outline: 1px solid transparent;
 }
 
 .tab-navigation li {
-    display: table-cell; /* Make each li a table cell */
-    width: 33.333333%; /* Exactly one-third */
+    flex: 1; /* Equal flex growth */
     text-align: center;
-    vertical-align: middle;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    display: inline-block; /* Ensure horizontal display */
+    width: 33.333%; /* Fixed width */
 }
 
 .tab-navigation button {
