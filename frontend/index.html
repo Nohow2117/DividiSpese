@@ -75,17 +75,19 @@
     <div id="app-container" class="container mt-4">
         <h1>Gruppo Spese: <span id="current-group-name"></span></h1>
         <p>Condividi questo link: <code id="group-share-link"></code></p>
-        <div class="share-options">
-            <button id="share-button" class="share-btn"><i class="fas fa-share-alt"></i> Condividi</button>
-            <div id="share-dropdown" class="share-dropdown">
-                <a href="#" class="share-option" data-platform="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-                <a href="#" class="share-option" data-platform="telegram"><i class="fab fa-telegram"></i> Telegram</a>
-                <a href="#" class="share-option" data-platform="messenger"><i class="fab fa-facebook-messenger"></i> Messenger</a>
-                <a href="#" class="share-option" data-platform="email"><i class="fas fa-envelope"></i> Email</a>
-                <a href="#" class="share-option" data-platform="copy"><i class="fas fa-copy"></i> Copia Link</a>
+        <div class="buttons-container">
+            <div class="share-options">
+                <button id="share-button" class="share-btn"><i class="fas fa-share-alt"></i> Condividi</button>
+                <div id="share-dropdown" class="share-dropdown">
+                    <a href="#" class="share-option" data-platform="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+                    <a href="#" class="share-option" data-platform="telegram"><i class="fab fa-telegram"></i> Telegram</a>
+                    <a href="#" class="share-option" data-platform="messenger"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+                    <a href="#" class="share-option" data-platform="email"><i class="fas fa-envelope"></i> Email</a>
+                    <a href="#" class="share-option" data-platform="copy"><i class="fas fa-copy"></i> Copia Link</a>
+                </div>
             </div>
+            <button id="delete-group-button" class="delete-btn"><i class="fas fa-trash"></i> Elimina Gruppo</button>
         </div>
-        <p><button id="delete-group-button" class="button-danger">Elimina Gruppo</button></p>
 
         <!-- Progress Bar -->
         <div class="progress-container">
