@@ -18,6 +18,8 @@
   - Corrected UNIQUE constraint in database to allow same names in different groups but not in the same group.
   - Modified backend logic to check for participant existence (case-insensitive) before insertion.
   - Implemented return of error 409 Conflict with clear message if trying to add participant with existing name (case-insensitive) in the same group.
+- Bugfix: Localized participant exists error message:
+  - Improved and translated error message for duplicate participants, suggesting to add a surname.
 
 ## Next Steps
 - Verify Google Analytics tracking
