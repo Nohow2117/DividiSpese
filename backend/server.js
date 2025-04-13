@@ -189,15 +189,28 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
 
     let client;
     try {
-        client = await pool.connect(); // Get a client for potential transaction
+        client = await pool.connect();
 
-        // Check if group exists first
+        // 1. Check if group exists
         const groupCheck = await client.query('SELECT 1 FROM groups WHERE group_uuid = $1', [groupUuid]);
         if (groupCheck.rows.length === 0) {
             return res.status(404).json({ error: `Group with UUID '${groupUuid}' not found` });
         }
 
-        // Attempt to insert the participant directly
+        // 2. Check if participant *already* exists in this group
+        const existingCheck = await client.query(
+            'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
+            [trimmedName, groupUuid]
+        );
+
+        if (existingCheck.rows.length > 0) {
+            // Participant already exists, return existing data
+            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Returning existing.`);
+            return res.status(200).json(existingCheck.rows[0]);
+        }
+
+        // 3. Participant does not exist, attempt to insert
+        console.log(`Participant '${trimmedName}' does not exist in group ${groupUuid}. Attempting insert.`);
         const result = await client.query(
             `INSERT INTO participants (name, group_id)
              VALUES ($1, $2)
@@ -205,44 +218,32 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
             [trimmedName, groupUuid]
         );
 
-        // If insertion was successful
-        console.log(`Participant '${trimmedName}' added to group ${groupUuid}:`, result.rows[0]);
+        // Insertion successful
+        console.log(`Participant '${trimmedName}' added successfully to group ${groupUuid}:`, result.rows[0]);
         res.status(201).json(result.rows[0]);
 
     } catch (err) {
-        console.error('Error adding participant to group:', err);
+        console.error('Error during participant addition process:', err);
 
-        // Check if it's a unique constraint violation
+        // Handle potential errors during INSERT, even after checking
         if (err.code === '23505') {
-            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Fetching existing.`);
-            try {
-                // Fetch the existing participant since the INSERT failed due to conflict
-                const existing = await pool.query( // Use pool directly here is fine, or reuse client
-                    'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
-                    [trimmedName, groupUuid]
-                );
-                if (existing.rows.length > 0) {
-                    console.log(`Returning existing participant:`, existing.rows[0]);
-                    return res.status(200).json(existing.rows[0]); // Return existing participant data
-                } else {
-                    // This case is strange: unique constraint failed, but SELECT didn't find it?
-                    console.error(`CRITICAL Error: Unique constraint violation (23505) for name='${trimmedName}', group='${groupUuid}' but SELECT query failed to find the existing row.`);
-                    return res.status(500).json({ error: 'Inconsistent state adding participant after conflict.' });
-                }
-            } catch (fetchErr) {
-                console.error('Error fetching existing participant after 23505 error:', fetchErr);
-                return res.status(500).json({ error: 'Database error checking for existing participant.' });
-            }
-        } else if (err.code === '23503') { // Foreign key violation (Group doesn't exist)
-            // This check might be redundant due to the explicit group check above, but keep for safety
-             return res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
+            // This implies a race condition: checked, didn't exist, but INSERT failed on unique constraint
+            console.warn(`Race condition detected: INSERT failed with 23505 for name='${trimmedName}', group='${groupUuid}' after existence check passed.`);
+            // Option 1: Return 409 Conflict
+            return res.status(409).json({ error: `Conflict: Participant '${trimmedName}' was likely added concurrently.` });
+            // Option 2: Try fetching again (might still fail if transaction visibility is weird)
+            /* try { ... fetch again ... } catch { ... } */
+        } else if (err.code === '23503') {
+            // Should ideally not happen due to the initial group check
+             console.error(`Foreign key violation (23503) despite group check passing for group='${groupUuid}'.`);
+             return res.status(500).json({ error: `Inconsistent state regarding group existence.` });
         } else {
             // Other database errors
-            return res.status(500).json({ error: 'Database error adding participant' });
+            return res.status(500).json({ error: 'Database error during participant addition.' });
         }
     } finally {
         if (client) {
-            client.release(); // Release the client back to the pool
+            client.release();
         }
     }
 });
