@@ -42,6 +42,29 @@ const tabPanels = document.querySelectorAll('.tab-panel');
 // Use relative URL since frontend is served by the same backend
 const backendUrl = '/api'; // Changed base URL to /api
 
+// --- Cookie Utilities ---
+function setCookie(name, value, days) {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + d.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+}
+
 // --- API Functions ---
 async function createNewGroup() {
     // Disable button (optional, get button reference if needed)
@@ -69,6 +92,8 @@ async function createNewGroup() {
             throw new Error(errorData.error || `Errore HTTP: ${response.status}`);
         }
         const data = await response.json();
+        // Set cookie for 30 days
+        setCookie('dividispese_group', data.group_uuid, 30);
         // Redirect to the new group's page
         // Using a simple path structure like /uuid directly
         console.log(`Group created: ${data.group_uuid}, redirecting...`);
@@ -193,7 +218,7 @@ async function addParticipant(name) {
 
 async function removeParticipant(id) {
     if (!currentGroupUuid) return;
-    // Confirmation dialog
+    // Optional: Add confirmation dialog
     const participant = participants.find(p => p.id === id);
     if (!participant) return;
 
@@ -270,8 +295,10 @@ async function addExpense(description, amount, paidById, participantIds) {
 async function removeExpense(id) {
     if (!currentGroupUuid) return;
     // Optional: Add confirmation dialog
-    // const confirmation = confirm("Sei sicuro di voler rimuovere questa spesa?");
-    // if (!confirmation) return;
+    const confirmation = confirm("Sei sicuro di voler rimuovere questa spesa?");
+    if (!confirmation) {
+        return;
+    }
 
     try {
         const response = await fetch(`${backendUrl}/groups/${currentGroupUuid}/expenses/${id}`, {
@@ -310,6 +337,7 @@ async function handleDeleteGroupClick() {
 
         if (response.ok) { // Status 200-299
             alert('Gruppo eliminato con successo!');
+            deleteCookie('dividispese_group'); // Remove cookie
             window.location.pathname = '/'; // Redirect to homepage
         } else {
             const errorData = await response.json().catch(() => ({ error: `Errore HTTP: ${response.status}` }));
@@ -737,13 +765,20 @@ function initApp() {
     // Check if the necessary containers exist
     if (!appContainer || !welcomeHeader || !welcomeContainer || !socialProof) {
         console.error('Essential layout containers not found during init. Aborting.');
-        // Maybe display a user-friendly error message here
         return;
     }
 
-    const pathSegments = window.location.pathname.split('/').filter(segment => segment);
+    // Check for cookie first
+    const savedGroupUuid = getCookie('dividispese_group');
+    if (savedGroupUuid) {
+        // Redirect to saved group
+        window.location.pathname = `/${savedGroupUuid}`;
+        return;
+    }
 
-    if (pathSegments.length === 1 && pathSegments[0].length > 5) { // Basic check for UUID-like path
+    // Then check URL
+    const pathSegments = window.location.pathname.split('/').filter(segment => segment);
+    if (pathSegments.length === 1 && pathSegments[0].length > 5) {
         // We are on a group page (e.g., /abcdefgh)
         currentGroupUuid = pathSegments[0];
         console.log('Detected Group UUID:', currentGroupUuid);
