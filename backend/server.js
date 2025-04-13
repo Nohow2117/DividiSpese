@@ -206,8 +206,8 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
         if (existingCheck.rows.length > 0) {
             // Participant already exists, return 409 Conflict
             console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Returning 409 Conflict.`);
-            // Return 409 Conflict with a user-friendly error message
-            return res.status(409).json({ error: `Participant with name '${trimmedName}' already exists in this group.` });
+            // Return 409 Conflict with a user-friendly error message in Italian
+            return res.status(409).json({ error: `Esiste già un partecipante chiamato '${trimmedName}' in questo gruppo. Prova ad aggiungere un cognome o un identificativo diverso.` });
         }
 
         // 3. Participant does not exist, attempt to insert
