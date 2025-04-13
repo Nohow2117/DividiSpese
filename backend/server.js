@@ -187,50 +187,62 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
         return res.status(400).json({ error: 'Participant name cannot be empty' });
     }
 
+    let client;
     try {
-        // Check if group exists
-        const groupCheck = await pool.query('SELECT 1 FROM groups WHERE group_uuid = $1', [groupUuid]);
+        client = await pool.connect(); // Get a client for potential transaction
+
+        // Check if group exists first
+        const groupCheck = await client.query('SELECT 1 FROM groups WHERE group_uuid = $1', [groupUuid]);
         if (groupCheck.rows.length === 0) {
             return res.status(404).json({ error: `Group with UUID '${groupUuid}' not found` });
         }
 
-        // Insert participant, handling potential duplicates within the same group
-        const result = await pool.query(
+        // Attempt to insert the participant directly
+        const result = await client.query(
             `INSERT INTO participants (name, group_id)
              VALUES ($1, $2)
-             ON CONFLICT (name, group_id) DO NOTHING
              RETURNING id, name, group_id`,
             [trimmedName, groupUuid]
         );
 
-        if (result.rows.length > 0) {
-            console.log(`Participant '${trimmedName}' added to group ${groupUuid}:`, result.rows[0]);
-            res.status(201).json(result.rows[0]);
-        } else {
-            // This happens if ON CONFLICT DO NOTHING was triggered
-            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Fetching existing.`);
-            const existing = await pool.query(
-                'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
-                [trimmedName, groupUuid]
-            );
-            if (existing.rows.length > 0) {
-                console.log(`Returning existing participant:`, existing.rows[0]);
-                res.status(200).json(existing.rows[0]);
-            } else {
-                console.error(`Error: ON CONFLICT triggered for name='${trimmedName}', group='${groupUuid}' but could not find existing participant`);
-                res.status(500).json({ error: 'Error adding participant after conflict' });
-            }
-        }
+        // If insertion was successful
+        console.log(`Participant '${trimmedName}' added to group ${groupUuid}:`, result.rows[0]);
+        res.status(201).json(result.rows[0]);
 
     } catch (err) {
         console.error('Error adding participant to group:', err);
-        // More specific error handling
-        if (err.code === '23503') { // Foreign key violation
-            res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
-        } else if (err.code === '23505') { // Unique constraint violation
-            res.status(400).json({ error: `Participant with name '${trimmedName}' already exists in this group.` });
+
+        // Check if it's a unique constraint violation
+        if (err.code === '23505') {
+            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Fetching existing.`);
+            try {
+                // Fetch the existing participant since the INSERT failed due to conflict
+                const existing = await pool.query( // Use pool directly here is fine, or reuse client
+                    'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
+                    [trimmedName, groupUuid]
+                );
+                if (existing.rows.length > 0) {
+                    console.log(`Returning existing participant:`, existing.rows[0]);
+                    return res.status(200).json(existing.rows[0]); // Return existing participant data
+                } else {
+                    // This case is strange: unique constraint failed, but SELECT didn't find it?
+                    console.error(`CRITICAL Error: Unique constraint violation (23505) for name='${trimmedName}', group='${groupUuid}' but SELECT query failed to find the existing row.`);
+                    return res.status(500).json({ error: 'Inconsistent state adding participant after conflict.' });
+                }
+            } catch (fetchErr) {
+                console.error('Error fetching existing participant after 23505 error:', fetchErr);
+                return res.status(500).json({ error: 'Database error checking for existing participant.' });
+            }
+        } else if (err.code === '23503') { // Foreign key violation (Group doesn't exist)
+            // This check might be redundant due to the explicit group check above, but keep for safety
+             return res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
         } else {
-            res.status(500).json({ error: 'Database error adding participant' });
+            // Other database errors
+            return res.status(500).json({ error: 'Database error adding participant' });
+        }
+    } finally {
+        if (client) {
+            client.release(); // Release the client back to the pool
         }
     }
 });
