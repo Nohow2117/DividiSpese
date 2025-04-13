@@ -197,16 +197,17 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
             return res.status(404).json({ error: `Group with UUID '${groupUuid}' not found` });
         }
 
-        // 2. Check if participant *already* exists in this group
+        // 2. Check if participant *already* exists in this group (case-insensitive)
         const existingCheck = await client.query(
-            'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
+            'SELECT id, name, group_id FROM participants WHERE LOWER(name) = LOWER($1) AND group_id = $2',
             [trimmedName, groupUuid]
         );
 
         if (existingCheck.rows.length > 0) {
-            // Participant already exists, return existing data
-            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Returning existing.`);
-            return res.status(200).json(existingCheck.rows[0]);
+            // Participant already exists, return 409 Conflict
+            console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Returning 409 Conflict.`);
+            // Return 409 Conflict with a user-friendly error message
+            return res.status(409).json({ error: `Participant with name '${trimmedName}' already exists in this group.` });
         }
 
         // 3. Participant does not exist, attempt to insert
