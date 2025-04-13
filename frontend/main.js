@@ -771,9 +771,13 @@ function initApp() {
     // Check for cookie first
     const savedGroupUuid = getCookie('dividispese_group');
     if (savedGroupUuid) {
-        // Redirect to saved group
-        window.location.pathname = `/${savedGroupUuid}`;
-        return;
+        // Get the current path without the leading slash
+        const currentPath = window.location.pathname.substring(1);
+        // If we're not already on the group page, redirect
+        if (currentPath !== savedGroupUuid) {
+            window.location.pathname = `/${savedGroupUuid}`;
+            return;
+        }
     }
 
     // Then check URL
@@ -790,12 +794,10 @@ function initApp() {
         
         // Initialize progress steps based on active tab - this is the new code
         setTimeout(() => {
-            // Find which tab panel is active after everything has loaded
             const activePanel = document.querySelector('.tab-panel.active-panel');
             if (activePanel) {
                 updateProgressSteps(activePanel.id);
             } else {
-                // Default to first tab (participants) if none active
                 updateProgressSteps('participants-section');
             }
         }, 100); // Small delay to ensure DOM is ready
