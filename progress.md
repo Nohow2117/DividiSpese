@@ -10,6 +10,10 @@
   - Updated initApp to check for cookie before URL parsing
   - Cookie persists for 30 days
   - Cookie is cleared when group is deleted
+- Fixed infinite redirect loop
+  - Modified initApp to check current URL before redirecting
+  - Only redirect if not already on the group page
+  - Now works correctly without infinite redirects
 
 ## Next Steps
 - Verify Google Analytics tracking
