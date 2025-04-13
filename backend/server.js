@@ -178,70 +178,61 @@ app.post('/api/groups/:groupUuid/participants', async (req, res) => {
     const { name } = req.body;
 
     console.log(`Attempting to add participant '${name}' to group UUID: ${groupUuid}`);
-    console.log(`Type of groupUuid from req.params: ${typeof groupUuid}`);
-    // --- End logging ---
 
     if (!name) {
         return res.status(400).json({ error: 'Participant name is required' });
     }
-    // Trim the name
     const trimmedName = name.trim();
     if (!trimmedName) {
         return res.status(400).json({ error: 'Participant name cannot be empty' });
     }
 
     try {
-        // Check if group exists (optional, but good practice - already done by FK constraint now)
-        /* const groupCheck = await pool.query('SELECT id FROM groups WHERE group_uuid = $1', [groupUuid]);
+        // Check if group exists
+        const groupCheck = await pool.query('SELECT 1 FROM groups WHERE group_uuid = $1', [groupUuid]);
         if (groupCheck.rows.length === 0) {
-            // client.release(); NO!
-            return res.status(404).json({ error: 'Group not found' });
-        } */
-
-        // Log values going into the query
-        console.log(`Executing INSERT with name: '${trimmedName}', group_id: '${groupUuid}'`);
+            return res.status(404).json({ error: `Group with UUID '${groupUuid}' not found` });
+        }
 
         // Insert participant, handling potential duplicates within the same group
         const result = await pool.query(
             `INSERT INTO participants (name, group_id)
              VALUES ($1, $2)
-             ON CONFLICT (name, group_id) DO NOTHING -- Specify the columns for conflict
-             RETURNING id, name, group_id`, // Return the inserted (or existing ignored) row data
-            [trimmedName, groupUuid] // Use trimmedName here
+             ON CONFLICT (name, group_id) DO NOTHING
+             RETURNING id, name, group_id`,
+            [trimmedName, groupUuid]
         );
 
         if (result.rows.length > 0) {
             console.log(`Participant '${trimmedName}' added to group ${groupUuid}:`, result.rows[0]);
-            res.status(201).json(result.rows[0]); // Return the added participant
+            res.status(201).json(result.rows[0]);
         } else {
             // This happens if ON CONFLICT DO NOTHING was triggered
             console.log(`Participant '${trimmedName}' already exists in group ${groupUuid}. Fetching existing.`);
-            // Fetch the existing participant to return it
             const existing = await pool.query(
                 'SELECT id, name, group_id FROM participants WHERE name = $1 AND group_id = $2',
                 [trimmedName, groupUuid]
             );
-            if(existing.rows.length > 0) {
-                 console.log(`Returning existing participant:`, existing.rows[0]);
-                res.status(200).json(existing.rows[0]); // Return existing participant data
+            if (existing.rows.length > 0) {
+                console.log(`Returning existing participant:`, existing.rows[0]);
+                res.status(200).json(existing.rows[0]);
             } else {
-                // Should not happen if constraint exists, but handle defensively
-                 console.error(`Error: ON CONFLICT triggered for name='${trimmedName}', group='${groupUuid}' but could not find existing participant`);
-                 res.status(500).json({ error: 'Error adding participant after conflict' });
+                console.error(`Error: ON CONFLICT triggered for name='${trimmedName}', group='${groupUuid}' but could not find existing participant`);
+                res.status(500).json({ error: 'Error adding participant after conflict' });
             }
         }
 
     } catch (err) {
         console.error('Error adding participant to group:', err);
-        // More specific error for FK violation?
+        // More specific error handling
         if (err.code === '23503') { // Foreign key violation
-             res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
+            res.status(400).json({ error: `Invalid group specified. Group UUID '${groupUuid}' not found.` });
+        } else if (err.code === '23505') { // Unique constraint violation
+            res.status(400).json({ error: `Participant with name '${trimmedName}' already exists in this group.` });
         } else {
             res.status(500).json({ error: 'Database error adding participant' });
         }
-    } /* finally {
-        // client.release(); NO! Pool manages connections
-    } */
+    }
 });
 
 /**
